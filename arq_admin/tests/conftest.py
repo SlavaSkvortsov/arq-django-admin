@@ -1,0 +1,111 @@
+import asyncio
+from contextlib import suppress
+from dataclasses import dataclass
+from typing import (
+    Any, AsyncGenerator, Callable, List, Optional, Sequence, Union,
+)
+
+import pytest
+from arq import ArqRedis, Worker, create_pool
+from arq.jobs import Job
+from arq.typing import WorkerCoroutine
+from arq.worker import Function
+
+from arq_admin.tests.settings import REDIS_SETTINGS
+
+
+@pytest.fixture(autouse=True)
+async def redis() -> AsyncGenerator[ArqRedis, None]:
+    redis = await create_pool(REDIS_SETTINGS)
+    await redis.flushall()
+    yield redis
+    redis.close()
+    await redis.wait_closed()
+
+
+@pytest.fixture()
+async def create_worker(redis: ArqRedis) -> AsyncGenerator[Callable[[Any], Worker], None]:
+    worker: Optional[Worker] = None
+
+    def create(functions: Sequence[Union[Function, WorkerCoroutine]], **kwargs: Any) -> Worker:
+        nonlocal worker
+        worker = Worker(
+            functions=functions, redis_pool=redis, burst=True, max_burst_jobs=100, poll_delay=0, **kwargs,
+        )
+        return worker
+
+    yield create
+
+    if worker:
+        await worker.close()
+
+
+async def deferred_task(_ctx: Any) -> None:
+    pass
+
+
+async def running_task(_ctx: Any) -> None:
+    await asyncio.sleep(0.2)
+
+
+async def successful_task(_ctx: Any) -> None:
+    pass
+
+
+async def failed_task(_ctx: Any) -> None:
+    raise Exception
+
+
+@dataclass
+class JobsCreator:
+    worker: Worker
+    redis: ArqRedis
+
+    async def create_queued(self) -> Job:
+        job = await self.redis.enqueue_job('successful_task')
+        assert job
+        return job
+
+    async def create_successful(self) -> Job:
+        job = await self.redis.enqueue_job('successful_task')
+        assert job
+        await self.worker.main()
+
+        return job
+
+    async def create_failed(self) -> Job:
+        job = await self.redis.enqueue_job('failed_task')
+        assert job
+        await self.worker.main()
+
+        return job
+
+    async def create_running(self) -> Job:
+        job = await self.redis.enqueue_job('running_task')
+        assert job
+        with suppress(asyncio.TimeoutError):
+            await asyncio.wait_for(self.worker.main(), 0.1)
+        return job
+
+    async def create_deferred(self) -> Job:
+        job = await self.redis.enqueue_job('deferred_task', _defer_by=9000)
+        assert job
+        return job
+
+
+@pytest.fixture()
+async def jobs_creator(redis: ArqRedis, create_worker: Any) -> JobsCreator:
+    worker = create_worker(functions=[deferred_task, running_task, successful_task, failed_task])
+    return JobsCreator(worker=worker, redis=redis)
+
+
+@pytest.fixture()
+async def all_jobs(jobs_creator: JobsCreator) -> List[Job]:
+    # the order matters
+    return [
+        await jobs_creator.create_successful(),
+        await jobs_creator.create_failed(),
+        await jobs_creator.create_running(),
+        await jobs_creator.create_deferred(),
+        await jobs_creator.create_queued(),
+    ]

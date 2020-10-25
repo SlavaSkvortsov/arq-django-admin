@@ -1,0 +1,8 @@
+{% extends "admin/base.html" %}
+{% load static %}
+
+
+{% block userlinks %}
+    <a href="{% url 'arq_admin:home' %}">ARQ Status</a> /
+    {{ block.super }}
+{% endblock %}

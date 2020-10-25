@@ -1,0 +1,81 @@
+{% extends "admin/base_site.html" %}
+
+{% block title %}Queues {{ block.super }}{% endblock %}
+
+{% block extrastyle %}
+    {{ block.super }}
+    <style>table {width: 100%;}</style>
+{% endblock %}
+
+{% block content_title %}<h1>ARQ Queues</h1>{% endblock %}
+
+{% block breadcrumbs %}
+    <div class="breadcrumbs">
+        <a href="{% url 'admin:index' %}">Home</a> &rsaquo;
+        <a href="{% url 'arq_admin:home' %}">Django ARQ</a>
+    </div>
+{% endblock %}
+
+{% block content %}
+
+<div id="content-main">
+
+    <div class="module">
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Queued Jobs</th>
+                    <th>Deferred Jobs</th>
+                    <th>Running Jobs</th>
+                    <th>Successful Jobs</th>
+                    <th>Failed Jobs</th>
+                    <th>Host</th>
+                    <th>Port</th>
+                    <th>DB</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for queue in object_list %}
+                    <tr class = "{% cycle 'row1' 'row2' %}">
+                        <th>
+                            <a href="{% url 'arq_admin:all_jobs' queue.name %}">
+                                {{ queue.name }}
+                            </a>
+                        </th>
+                        <td>
+                            <a href="{% url 'arq_admin:queued_jobs' queue.name %}">
+                                {{ queue.queued_jobs }}
+                            </a>
+                        </td>
+                        <th>
+                            <a href="{% url 'arq_admin:deferred_jobs' queue.name %}">
+                                {{ queue.deferred_jobs }}
+                            </a>
+                        </th>
+                        <th>
+                              <a href="{% url 'arq_admin:running_jobs' queue.name %}">
+                                  {{ queue.running_jobs }}
+                              </a>
+                        </th>
+                        <th>
+                              <a href="{% url 'arq_admin:successful_jobs' queue.name %}">
+                                  {{ queue.successful_jobs }}
+                              </a>
+                        </th>
+                        <th>
+                            <a href="{% url 'arq_admin:failed_jobs' queue.name %}">
+                                {{ queue.failed_jobs }}
+                            </a>
+                        </th>
+                        <td>{{ queue.host }}</td>
+                        <td>{{ queue.port }}</td>
+                        <td>{{ queue.database }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}

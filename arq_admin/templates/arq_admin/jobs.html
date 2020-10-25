@@ -1,0 +1,84 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block title %}
+    {{ job_status }} Jobs in {{ queue_name }} {{ block.super }}
+{% endblock %}
+
+{% block extrastyle %}
+    {{ block.super }}
+    <link rel="stylesheet" type="text/css" href="{% static "admin/css/changelists.css" %}">
+{% endblock %}
+
+
+{% block breadcrumbs %}
+    <div class="breadcrumbs">
+        <a href="{% url 'admin:index' %}">Home</a> &rsaquo;
+        <a href="{% url 'arq_admin:home' %}">Django ARQ</a> &rsaquo;
+        {{ queue_name }}
+    </div>
+{% endblock %}
+
+{% block content_title %}<h1>{{ job_status }} jobs in {{ queue_name }}</h1>{% endblock %}
+
+{% block content %}
+
+<div id="content-main">
+    <table id="result_list">
+        <thead>
+            <tr>
+                <th><div class="text"><span>ID</span></div></th>
+                <th><div class="text"><span>Function</span></div></th>
+                <th><div class="text"><span>Status</span></div></th>
+                <th><div class="text"><span>Enqueued at</span></div></th>
+                <th><div class="text"><span>Started at</span></div></th>
+                <th><div class="text"><span>Finished at</span></div></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for job in object_list %}
+                <tr class = "{% cycle 'row1' 'row2' %}">
+                    <th>
+                        <a href="{% url 'arq_admin:job_detail' queue_name job.job_id %}">
+                            {{ job.job_id }}
+                        </a>
+                    </th>
+                    <td>{{ job.function }}</td>
+                    <td>{{ job.status }}</td>
+                    <td>
+                        {% if job.enqueue_time %}
+                            {{ job.enqueue_time }}
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if job.start_time %}
+                            {{ job.start_time }}
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if job.finish_time %}
+                            {{ job.finish_time }}
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="paginator">
+        {% if page_obj.paginator.num_pages > 1 %}
+            {% for page in page_obj.paginator.page_range %}
+                {% if page == page_obj.number %}
+                    <span class="this-page">{{ page }}</span>
+                {% elif forloop.last %}
+                    <a href="?page={{ page }}" class="end">{{ page }}</a>
+                {% else %}
+                    <a href="?page={{ page }}">{{ page }}</a>
+                {% endif %}
+            {% endfor %}
+        {% endif %}
+        {{ page_obj.paginator.count }} jobs
+    </div>
+</div>
+
+{% endblock %}

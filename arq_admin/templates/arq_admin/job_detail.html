@@ -1,0 +1,121 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block title %}Job {{ object.id }} {{ block.super }}{% endblock %}
+
+{% block extrastyle %}
+    {{ block.super }}
+    <style>
+        .data {
+            display: inline-block;
+            float: left;
+            width: 80%;
+            font-size: 12px;
+            padding-top: 3px;
+        }
+    </style>
+    <link href="{% static 'admin/css/forms.css' %}" type="text/css" rel="stylesheet">
+{% endblock %}
+
+{% block breadcrumbs %}
+    <div class="breadcrumbs">
+        <a href="{% url 'admin:index' %}">Home</a> &rsaquo;
+        <a href="{% url 'arq_admin:home' %}">Django ARQ</a> &rsaquo;
+        <a href="{% url 'arq_admin:all_jobs' queue_name %}">{{ queue_name }}</a> &rsaquo;
+        <a href="{% url 'arq_admin:job_detail' queue_name object.job_id %}">{{ object.job_id }}</a>
+    </div>
+{% endblock %}
+
+{% block content_title %}<h1>Job Info</h1>{% endblock %}
+
+{% block content %}
+
+<div id="content-main">
+    <fieldset class="module aligned">
+        <div class="form-row">
+            <div>
+                <label class="required">ID:</label>
+                <div class="data">{{ object.job_id }}</div>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div>
+                <label class="required">Function:</label>
+                <div class="data">{{ object.function }}</div>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div>
+                <label class="required">Status:</label>
+                <div class="data">{{ object.status }}</div>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div>
+                <label class="required">Args:</label>
+                <div class="data">{{ object.args }}</div>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div>
+                <label class="required">Kwargs:</label>
+                <div class="data">{{ object.kwargs }}</div>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div>
+                <label class="required">Enqueue time:</label>
+                <div class="data">{{ object.enqueue_time }}</div>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div>
+                <label class="required">Start time:</label>
+                <div class="data">{{ object.start_time }}</div>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div>
+                <label class="required">Finish time:</label>
+                <div class="data">{{ object.finish_time }}</div>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div>
+                <label class="required">Job try:</label>
+                <div class="data">{{ object.job_try }}</div>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div>
+                <label class="required">Success:</label>
+                <div class="data">{{ object.success }}</div>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div>
+                <label class="required">Result:</label>
+                <div class="data">{{ object.result }}</div>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div>
+                <label class="required">Score:</label>
+                <div class="data">{{ object.score }}</div>
+            </div>
+        </div>
+    </fieldset>
+</div>
+
+{% endblock %}
