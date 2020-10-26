@@ -18,12 +18,13 @@ def get_requirements() -> List[str]:
 
 setup(
     name='arq-django-admin',
-    version='0.1',
+    version='0.0.2',
     setup_requires=['better-setuptools-git-version'],
     install_requires=get_requirements(),
     tests_require=[],
     packages=['arq_admin'],
     package_data={'arq_admin': ['py.typed']},
+    include_package_data=True,
     author='Slava Skvortsov',
     description='An app that provides Django integration for ARQ',
     long_description=get_readme(),
