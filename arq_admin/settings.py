@@ -8,3 +8,5 @@ if ARQ_QUEUES is None:
 
 if not all(isinstance(redis_settings, RedisSettings) for redis_settings in ARQ_QUEUES.values()):
     raise ImproperlyConfigured('All values of "ARQ_QUEUES" must be RedisSettings')
+
+ARQ_DESERIALIZER = getattr(settings, 'ARQ_DESERIALIZER', None)

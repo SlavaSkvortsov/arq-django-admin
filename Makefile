@@ -2,7 +2,7 @@ requirements:
 	pip install -r requirements-dev.txt
 
 test:
-	pytest --cov=arq_admin --cov-fail-under 100
+	python -m pytest
 
 coverage-collect:
 	coverage run -m pytest

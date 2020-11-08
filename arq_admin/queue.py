@@ -5,10 +5,11 @@ from typing import List, NamedTuple, Optional
 
 from arq import ArqRedis
 from arq.connections import RedisSettings, create_pool
+from arq.constants import result_key_prefix
 from arq.jobs import DeserializationError, Job as ArqJob, JobDef, JobStatus
 
+from arq_admin import settings
 from arq_admin.job import JobInfo
-from arq_admin.settings import ARQ_QUEUES
 
 
 class QueueStats(NamedTuple):
@@ -34,13 +35,15 @@ class Queue:
     def from_name(cls, name: str) -> 'Queue':
         return cls(
             name=name,
-            redis_settings=ARQ_QUEUES[name],
+            redis_settings=settings.ARQ_QUEUES[name],
         )
 
     async def get_jobs(self, status: Optional[JobStatus] = None) -> List[JobInfo]:
         redis = await create_pool(self.redis_settings)
         job_ids = set(await redis.zrangebyscore(self.name))
-        job_ids |= {job_result.job_id for job_result in await redis.all_job_results()}
+        result_keys = await redis.keys(f'{result_key_prefix}*')
+        job_ids |= {key[len(result_key_prefix):] for key in result_keys}
+
         jobs: List[JobInfo] = await asyncio.gather(*[self.get_job_by_id(job_id, redis) for job_id in job_ids])
 
         if status:
@@ -76,6 +79,7 @@ class Queue:
             job_id=job_id,
             redis=redis,
             _queue_name=self.name,
+            _deserializer=settings.ARQ_DESERIALIZER,
         )
 
         unknown_function_msg = "Can't find job"
