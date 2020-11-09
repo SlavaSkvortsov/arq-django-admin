@@ -18,7 +18,7 @@ def get_requirements() -> List[str]:
 
 setup(
     name='arq-django-admin',
-    version='0.0.2',
+    version='0.0.4',
     setup_requires=['better-setuptools-git-version'],
     install_requires=get_requirements(),
     tests_require=[],
