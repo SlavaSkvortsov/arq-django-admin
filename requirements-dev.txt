@@ -1,5 +1,6 @@
 -r requirements.txt
 
+asynctest==0.13.0
 pytest==6.0.2
 pytest-django==4.1.0
 pytest-asyncio==0.14.0

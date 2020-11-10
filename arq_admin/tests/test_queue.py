@@ -1,5 +1,6 @@
 from typing import List
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
+from asynctest import patch
 
 import pytest
 from arq.constants import default_queue_name
