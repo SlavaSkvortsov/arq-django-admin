@@ -1,10 +1,10 @@
 from typing import List
 from unittest.mock import MagicMock
-from asynctest import patch
 
 import pytest
 from arq.constants import default_queue_name
 from arq.jobs import DeserializationError, Job, JobStatus
+from asynctest import patch
 from django.conf import settings
 
 from arq_admin.queue import Queue, QueueStats
