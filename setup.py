@@ -18,7 +18,7 @@ def get_requirements() -> List[str]:
 
 setup(
     name='arq-django-admin',
-    version='0.0.4',
+    version='0.0.5',
     setup_requires=['better-setuptools-git-version'],
     install_requires=get_requirements(),
     tests_require=[],
@@ -32,7 +32,6 @@ setup(
     url='https://github.com/SlavaSkvortsov/arq-django-admin',
     zip_safe=True,
     classifiers=[
-        'Development Status :: Alpha',
         'Environment :: Web Environment',
         'Framework :: Django',
         'Intended Audience :: Developers',
