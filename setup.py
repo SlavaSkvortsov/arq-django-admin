@@ -3,6 +3,8 @@ from typing import List
 
 from setuptools import setup
 
+import arq_admin
+
 
 def get_readme() -> str:
     """read the contents of the README file"""
@@ -18,7 +20,7 @@ def get_requirements() -> List[str]:
 
 setup(
     name='arq-django-admin',
-    version='0.0.5',
+    version=arq_admin.__version__,
     setup_requires=['better-setuptools-git-version'],
     install_requires=get_requirements(),
     tests_require=[],
