@@ -1,7 +1,9 @@
 # ARQ Django admin
 
 ![](https://github.com/SlavaSkvortsov/arq-django-admin/workflows/test/badge.svg)
-[![codecov](https://codecov.io/gh/SlavaSkvortsov/arq-django-admin/branch/master/graph/badge.svg)](https://codecov.io/gh/lundberg/respx)
+[![codecov](https://codecov.io/gh/SlavaSkvortsov/arq-django-admin/branch/master/graph/badge.svg)](https://codecov.io/gh/SlavaSkvortsov/arq-django-admin)
+[![pypi](https://img.shields.io/pypi/v/arq-django-admin.svg)](https://pypi.python.org/pypi/arq-django-admin)
+[![versions](https://img.shields.io/pypi/pyversions/arq-django-admin.svg)](https://github.com/SlavaSkvortsov/arq-django-admin)
 
 Django admin dashboard for [arq](https://github.com/samuelcolvin/arq).
 ARQ Django admin is a simple app that allows you to configure your queues in django's settings.py and easily use them in your project.
