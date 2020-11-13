@@ -11,7 +11,7 @@ from arq.jobs import Job
 from arq.typing import WorkerCoroutine
 from arq.worker import Function
 
-from arq_admin.tests.settings import REDIS_SETTINGS
+from tests.settings import REDIS_SETTINGS
 
 
 @pytest.fixture(autouse=True)

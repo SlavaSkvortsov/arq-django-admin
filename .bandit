@@ -1,2 +1,2 @@
 [bandit]
-exclude: /venv,/arq_admin/tests
+exclude: /venv,/tests

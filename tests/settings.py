@@ -37,7 +37,7 @@ ARQ_QUEUES = {
     default_queue_name: REDIS_SETTINGS,
 }
 
-ROOT_URLCONF = 'arq_admin.tests.urls'
+ROOT_URLCONF = 'tests.urls'
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',

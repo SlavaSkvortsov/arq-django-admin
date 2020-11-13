@@ -26,7 +26,7 @@ setup(
     package_data={'arq_admin': ['py.typed']},
     include_package_data=True,
     author='Slava Skvortsov',
-    description='An app that provides Django integration for ARQ',
+    description='An app that provides Django admin for ARQ',
     long_description=get_readme(),
     long_description_content_type='text/markdown',
     url='https://github.com/SlavaSkvortsov/arq-django-admin',

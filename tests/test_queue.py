@@ -8,7 +8,7 @@ from asynctest import patch
 from django.conf import settings
 
 from arq_admin.queue import Queue, QueueStats
-from arq_admin.tests.conftest import JobsCreator
+from tests.conftest import JobsCreator
 
 
 @pytest.mark.asyncio
