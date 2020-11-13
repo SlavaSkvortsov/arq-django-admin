@@ -6,7 +6,7 @@
 [![versions](https://img.shields.io/pypi/pyversions/arq-django-admin.svg)](https://github.com/SlavaSkvortsov/arq-django-admin)
 
 Django admin dashboard for [arq](https://github.com/samuelcolvin/arq).
-ARQ Django admin is a simple app that allows you to configure your queues in django's settings.py and easily use them in your project.
+ARQ Django admin is a simple app that allows you to configure your queues in django's settings.py and show them in your admin dashboard.
 
 # Installation
 - Install `arq-django-admin` ([or download from PyPI](https://pypi.org/project/arq-django-admin/)):
