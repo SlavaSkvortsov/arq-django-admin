@@ -29,10 +29,8 @@ async def test_status_filter(all_jobs: List[Job]) -> None:
 @pytest.mark.asyncio
 async def test_stats(all_jobs: List[Job]) -> None:
     queue = Queue.from_name(default_queue_name)
-    oldest_job = min([(await job.info()).enqueue_time for job in all_jobs])  # type: ignore  # noqa: C407
     assert await queue.get_stats() == QueueStats(
         name=default_queue_name,
-        oldest_job=oldest_job,
         host=settings.REDIS_SETTINGS.host,
         port=settings.REDIS_SETTINGS.port,
         database=settings.REDIS_SETTINGS.database,

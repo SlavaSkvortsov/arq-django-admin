@@ -14,7 +14,6 @@ from arq_admin.job import JobInfo
 
 class QueueStats(NamedTuple):
     name: str
-    oldest_job: Optional[datetime]
     host: str
     port: int
     database: int
@@ -58,7 +57,6 @@ class Queue:
         jobs = await self.get_jobs()
         return QueueStats(
             name=self.name,
-            oldest_job=min(job.enqueue_time for job in jobs) if jobs else None,
             host=str(self.redis_settings.host),
             port=self.redis_settings.port,
             database=self.redis_settings.database,
