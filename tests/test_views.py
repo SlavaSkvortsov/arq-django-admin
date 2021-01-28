@@ -35,6 +35,15 @@ class TestView(TestCase):
         assert len(result.context_data['object_list']) == 5
 
     @pytest.mark.usefixtures('all_jobs')
+    @pytest.mark.usefixtures('unserializable_job')
+    def test_all_queue_jobs_view_with_unserializable(self) -> None:
+        url = reverse('arq_admin:all_jobs', kwargs={'queue_name': default_queue_name})
+
+        result = self.client.get(url)
+        assert isinstance(result, TemplateResponse)
+        assert len(result.context_data['object_list']) == 6
+
+    @pytest.mark.usefixtures('all_jobs')
     def test_successful_queue_jobs_view(self) -> None:
         url = reverse('arq_admin:successful_jobs', kwargs={'queue_name': default_queue_name})
 

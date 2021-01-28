@@ -1,12 +1,12 @@
 import asyncio
 from dataclasses import dataclass
-from datetime import datetime
 from typing import List, NamedTuple, Optional
 
 from arq import ArqRedis
 from arq.connections import RedisSettings, create_pool
 from arq.constants import result_key_prefix
 from arq.jobs import DeserializationError, Job as ArqJob, JobDef, JobStatus
+from django.utils import timezone
 
 from arq_admin import settings
 from arq_admin.job import JobInfo
@@ -93,7 +93,7 @@ class Queue:
                 args=(),
                 kwargs={},
                 job_try=-1,
-                enqueue_time=datetime(2222, 1, 1),
+                enqueue_time=timezone.now().replace(year=2077),
                 score=420,
             )
 

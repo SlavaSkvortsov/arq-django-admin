@@ -7,6 +7,7 @@ from typing import (
 
 import pytest
 from arq import ArqRedis, Worker, create_pool
+from arq.constants import job_key_prefix
 from arq.jobs import Job
 from arq.typing import WorkerCoroutine
 from arq.worker import Function
@@ -92,6 +93,12 @@ class JobsCreator:
         assert job
         return job
 
+    async def create_unserializable(self) -> Job:
+        job = await self.redis.enqueue_job('successful_task')
+        assert job
+        self.redis.set(job_key_prefix + job.job_id, 'RANDOM TEXT')
+        return job
+
 
 @pytest.fixture()
 async def jobs_creator(redis: ArqRedis, create_worker: Any) -> JobsCreator:
@@ -109,3 +116,8 @@ async def all_jobs(jobs_creator: JobsCreator) -> List[Job]:
         await jobs_creator.create_deferred(),
         await jobs_creator.create_queued(),
     ]
+
+
+@pytest.fixture()
+async def unserializable_job(jobs_creator: JobsCreator) -> Job:
+    return await jobs_creator.create_unserializable()
