@@ -19,8 +19,7 @@ class QueueStats(NamedTuple):
     database: int
 
     queued_jobs: int
-    successful_jobs: int
-    failed_jobs: int
+    complete_jobs: int
     running_jobs: int
     deferred_jobs: int
 
@@ -43,10 +42,12 @@ class Queue:
         result_keys = await redis.keys(f'{result_key_prefix}*')
         job_ids |= {key[len(result_key_prefix):] for key in result_keys}
 
-        jobs: List[JobInfo] = await asyncio.gather(*[self.get_job_by_id(job_id, redis) for job_id in job_ids])
-
         if status:
-            jobs = [job for job in jobs if job.status == status]
+            job_ids_tuple = tuple(job_ids)
+            statuses = await asyncio.gather(*[self._get_job_status(job_id, redis) for job_id in job_ids_tuple])
+            job_ids = {job_id for (job_id, job_status) in zip(job_ids_tuple, statuses) if job_status == status}
+
+        jobs: List[JobInfo] = await asyncio.gather(*[self.get_job_by_id(job_id, redis) for job_id in job_ids])
 
         redis.close()
         await redis.wait_closed()
@@ -54,17 +55,22 @@ class Queue:
         return jobs
 
     async def get_stats(self) -> QueueStats:
-        jobs = await self.get_jobs()
+        redis = await create_pool(self.redis_settings)
+        job_ids = set(await redis.zrangebyscore(self.name))
+        result_keys = await redis.keys(f'{result_key_prefix}*')
+        job_ids |= {key[len(result_key_prefix):] for key in result_keys}
+
+        statuses = await asyncio.gather(*[self._get_job_status(job_id, redis) for job_id in job_ids])
+
         return QueueStats(
             name=self.name,
             host=str(self.redis_settings.host),
             port=self.redis_settings.port,
             database=self.redis_settings.database,
-            queued_jobs=len([job for job in jobs if job.status == JobStatus.queued]),
-            successful_jobs=len([job for job in jobs if job.status == JobStatus.complete and job.success]),
-            failed_jobs=len([job for job in jobs if job.status == JobStatus.complete and not job.success]),
-            running_jobs=len([job for job in jobs if job.status == JobStatus.in_progress]),
-            deferred_jobs=len([job for job in jobs if job.status == JobStatus.deferred]),
+            queued_jobs=len([status for status in statuses if status == JobStatus.queued]),
+            complete_jobs=len([status for status in statuses if status == JobStatus.complete]),
+            running_jobs=len([status for status in statuses if status == JobStatus.in_progress]),
+            deferred_jobs=len([status for status in statuses if status == JobStatus.deferred]),
         )
 
     async def get_job_by_id(self, job_id: str, redis: Optional[ArqRedis] = None) -> JobInfo:
@@ -105,3 +111,12 @@ class Queue:
             await redis.wait_closed()
 
         return job_info
+
+    async def _get_job_status(self, job_id: str, redis: ArqRedis) -> JobStatus:
+        arq_job = ArqJob(
+            job_id=job_id,
+            redis=redis,
+            _queue_name=self.name,
+            _deserializer=settings.ARQ_DESERIALIZER,
+        )
+        return await arq_job.status()

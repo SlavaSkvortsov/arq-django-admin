@@ -76,22 +76,8 @@ class QueuedJobListView(BaseJobListView):
     status = JobStatus.queued
 
 
-class SuccessfulJobListView(BaseJobListView):
+class CompleteJobListView(BaseJobListView):
     status = JobStatus.complete
-    job_status_label = 'Successful'
-
-    def get_queryset(self) -> List[JobInfo]:
-        jobs = super().get_queryset()
-        return [job for job in jobs if job.success]
-
-
-class FailedJobListView(BaseJobListView):
-    status = JobStatus.complete
-    job_status_label = 'Failed'
-
-    def get_queryset(self) -> List[JobInfo]:
-        jobs = super().get_queryset()
-        return [job for job in jobs if not job.success]
 
 
 class RunningJobListView(BaseJobListView):
