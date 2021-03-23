@@ -6,22 +6,21 @@ from typing import (
 )
 
 import pytest
-from arq import ArqRedis, Worker, create_pool
+from arq import ArqRedis, Worker
 from arq.constants import job_key_prefix
 from arq.jobs import Job
 from arq.typing import WorkerCoroutine
 from arq.worker import Function
 
+from arq_admin.redis import get_redis
 from tests.settings import REDIS_SETTINGS
 
 
 @pytest.fixture(autouse=True)
 async def redis() -> AsyncGenerator[ArqRedis, None]:
-    redis = await create_pool(REDIS_SETTINGS)
-    await redis.flushall()
-    yield redis
-    redis.close()
-    await redis.wait_closed()
+    async with get_redis(REDIS_SETTINGS) as redis:
+        await redis.flushall()
+        yield redis
 
 
 @pytest.fixture()

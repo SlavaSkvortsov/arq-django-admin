@@ -1,13 +1,14 @@
 import asyncio
 
 import pytest
-from arq import create_pool
 from arq.constants import default_queue_name, result_key_prefix
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.template.response import TemplateResponse
 from django.test import TestCase
 from django.urls import reverse
+
+from arq_admin.redis import get_redis
 
 
 class TestView(TestCase):
@@ -86,9 +87,7 @@ class TestView(TestCase):
 
     @staticmethod
     async def _get_job_id() -> str:
-        redis = await create_pool(settings.REDIS_SETTINGS)
-        keys = await redis.keys(result_key_prefix + '*')
+        async with get_redis(settings.REDIS_SETTINGS) as redis:
+            keys = await redis.keys(result_key_prefix + '*')
 
-        redis.close()
-        await redis.wait_closed()
         return keys[0][len(result_key_prefix):]

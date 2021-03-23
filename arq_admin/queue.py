@@ -3,13 +3,14 @@ from dataclasses import dataclass
 from typing import List, NamedTuple, Optional
 
 from arq import ArqRedis
-from arq.connections import RedisSettings, create_pool
+from arq.connections import RedisSettings
 from arq.constants import result_key_prefix
 from arq.jobs import DeserializationError, Job as ArqJob, JobDef, JobStatus
 from django.utils import timezone
 
 from arq_admin import settings
 from arq_admin.job import JobInfo
+from arq_admin.redis import get_redis
 
 
 class QueueStats(NamedTuple):
@@ -37,30 +38,27 @@ class Queue:
         )
 
     async def get_jobs(self, status: Optional[JobStatus] = None) -> List[JobInfo]:
-        redis = await create_pool(self.redis_settings)
-        job_ids = set(await redis.zrangebyscore(self.name))
-        result_keys = await redis.keys(f'{result_key_prefix}*')
-        job_ids |= {key[len(result_key_prefix):] for key in result_keys}
+        async with get_redis(self.redis_settings) as redis:
+            job_ids = set(await redis.zrangebyscore(self.name))
+            result_keys = await redis.keys(f'{result_key_prefix}*')
+            job_ids |= {key[len(result_key_prefix):] for key in result_keys}
 
-        if status:
-            job_ids_tuple = tuple(job_ids)
-            statuses = await asyncio.gather(*[self._get_job_status(job_id, redis) for job_id in job_ids_tuple])
-            job_ids = {job_id for (job_id, job_status) in zip(job_ids_tuple, statuses) if job_status == status}
+            if status:
+                job_ids_tuple = tuple(job_ids)
+                statuses = await asyncio.gather(*[self._get_job_status(job_id, redis) for job_id in job_ids_tuple])
+                job_ids = {job_id for (job_id, job_status) in zip(job_ids_tuple, statuses) if job_status == status}
 
-        jobs: List[JobInfo] = await asyncio.gather(*[self.get_job_by_id(job_id, redis) for job_id in job_ids])
-
-        redis.close()
-        await redis.wait_closed()
+            jobs: List[JobInfo] = await asyncio.gather(*[self.get_job_by_id(job_id, redis) for job_id in job_ids])
 
         return jobs
 
     async def get_stats(self) -> QueueStats:
-        redis = await create_pool(self.redis_settings)
-        job_ids = set(await redis.zrangebyscore(self.name))
-        result_keys = await redis.keys(f'{result_key_prefix}*')
-        job_ids |= {key[len(result_key_prefix):] for key in result_keys}
+        async with get_redis(self.redis_settings) as redis:
+            job_ids = set(await redis.zrangebyscore(self.name))
+            result_keys = await redis.keys(f'{result_key_prefix}*')
+            job_ids |= {key[len(result_key_prefix):] for key in result_keys}
 
-        statuses = await asyncio.gather(*[self._get_job_status(job_id, redis) for job_id in job_ids])
+            statuses = await asyncio.gather(*[self._get_job_status(job_id, redis) for job_id in job_ids])
 
         return QueueStats(
             name=self.name,
@@ -74,11 +72,12 @@ class Queue:
         )
 
     async def get_job_by_id(self, job_id: str, redis: Optional[ArqRedis] = None) -> JobInfo:
-        close_redis = False
         if redis is None:
-            redis = await create_pool(self.redis_settings)
-            close_redis = True
+            async with get_redis(self.redis_settings) as redis:
+                return await self._get_job_by_id(job_id, redis)
+        return await self._get_job_by_id(job_id, redis)
 
+    async def _get_job_by_id(self, job_id: str, redis: ArqRedis) -> JobInfo:
         arq_job = ArqJob(
             job_id=job_id,
             redis=redis,
@@ -105,10 +104,6 @@ class Queue:
 
         job_info = JobInfo.from_base(base_info, job_id)
         job_info.status = await arq_job.status()
-
-        if close_redis:
-            redis.close()
-            await redis.wait_closed()
 
         return job_info
 
