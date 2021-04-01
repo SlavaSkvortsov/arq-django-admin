@@ -45,14 +45,6 @@ class TestView(TestCase):
         assert len(result.context_data['object_list']) == 5
 
     @pytest.mark.usefixtures('all_jobs')
-    def test_complete_queue_jobs_view(self) -> None:
-        url = reverse('arq_admin:complete_jobs', kwargs={'queue_name': default_queue_name})
-
-        result = self.client.get(url)
-        assert isinstance(result, TemplateResponse)
-        assert len(result.context_data['object_list']) == 1
-
-    @pytest.mark.usefixtures('all_jobs')
     def test_queued_queue_jobs_view(self) -> None:
         url = reverse('arq_admin:queued_jobs', kwargs={'queue_name': default_queue_name})
 

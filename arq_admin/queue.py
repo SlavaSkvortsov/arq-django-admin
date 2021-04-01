@@ -20,7 +20,6 @@ class QueueStats(NamedTuple):
     database: int
 
     queued_jobs: int
-    complete_jobs: int
     running_jobs: int
     deferred_jobs: int
 
@@ -66,7 +65,6 @@ class Queue:
             port=self.redis_settings.port,
             database=self.redis_settings.database,
             queued_jobs=len([status for status in statuses if status == JobStatus.queued]),
-            complete_jobs=len([status for status in statuses if status == JobStatus.complete]),
             running_jobs=len([status for status in statuses if status == JobStatus.in_progress]),
             deferred_jobs=len([status for status in statuses if status == JobStatus.deferred]),
         )

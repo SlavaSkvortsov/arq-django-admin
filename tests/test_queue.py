@@ -21,7 +21,6 @@ async def test_all_get_jobs(all_jobs: List[Job]) -> None:
 async def test_status_filter(all_jobs: List[Job]) -> None:
     queue = Queue.from_name(default_queue_name)
     assert len(await queue.get_jobs(JobStatus.deferred)) == 1
-    assert len(await queue.get_jobs(JobStatus.complete)) == 1
     assert len(await queue.get_jobs(JobStatus.in_progress)) == 1
     assert len(await queue.get_jobs(JobStatus.queued)) == 1
 
@@ -35,7 +34,6 @@ async def test_stats(all_jobs: List[Job]) -> None:
         port=settings.REDIS_SETTINGS.port,
         database=settings.REDIS_SETTINGS.database,
         queued_jobs=1,
-        complete_jobs=1,
         running_jobs=1,
         deferred_jobs=1,
     )
@@ -44,7 +42,6 @@ async def test_stats(all_jobs: List[Job]) -> None:
 @pytest.mark.asyncio
 @patch.object(Job, 'info')
 async def test_deserialize_error(mocked_job_info: MagicMock, jobs_creator: JobsCreator) -> None:
-    job = await jobs_creator.create_complete()
     mocked_job_info.side_effect = DeserializationError()
     queue = Queue.from_name(default_queue_name)
     job_info = await queue.get_job_by_id(job.job_id)

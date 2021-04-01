@@ -28,7 +28,6 @@
                     <th>Queued Jobs</th>
                     <th>Deferred Jobs</th>
                     <th>Running Jobs</th>
-                    <th>Complete Jobs</th>
                     <th>Host</th>
                     <th>Port</th>
                     <th>DB</th>
@@ -55,11 +54,6 @@
                         <th>
                               <a href="{% url 'arq_admin:running_jobs' queue.name %}">
                                   {{ queue.running_jobs }}
-                              </a>
-                        </th>
-                        <th>
-                              <a href="{% url 'arq_admin:complete_jobs' queue.name %}">
-                                  {{ queue.complete_jobs }}
                               </a>
                         </th>
                         <td>{{ queue.host }}</td>

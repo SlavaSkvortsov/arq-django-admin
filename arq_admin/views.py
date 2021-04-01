@@ -76,10 +76,6 @@ class QueuedJobListView(BaseJobListView):
     status = JobStatus.queued
 
 
-class CompleteJobListView(BaseJobListView):
-    status = JobStatus.complete
-
-
 class RunningJobListView(BaseJobListView):
     status = JobStatus.in_progress
 
