@@ -33,7 +33,7 @@ class TestView(TestCase):
 
         result = self.client.get(url)
         assert isinstance(result, TemplateResponse)
-        assert len(result.context_data['object_list']) == 4
+        assert len(result.context_data['object_list']) == 3
 
     @pytest.mark.usefixtures('all_jobs')
     @pytest.mark.usefixtures('unserializable_job')
@@ -42,7 +42,7 @@ class TestView(TestCase):
 
         result = self.client.get(url)
         assert isinstance(result, TemplateResponse)
-        assert len(result.context_data['object_list']) == 5
+        assert len(result.context_data['object_list']) == 4
 
     @pytest.mark.usefixtures('all_jobs')
     def test_queued_queue_jobs_view(self) -> None:
