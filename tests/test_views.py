@@ -1,7 +1,7 @@
 import asyncio
 
 import pytest
-from arq.constants import default_queue_name, result_key_prefix
+from arq.constants import default_queue_name, job_key_prefix
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.template.response import TemplateResponse
@@ -80,6 +80,6 @@ class TestView(TestCase):
     @staticmethod
     async def _get_job_id() -> str:
         async with get_redis(settings.REDIS_SETTINGS) as redis:
-            keys = await redis.keys(result_key_prefix + '*')
+            keys = await redis.keys(job_key_prefix + '*')
 
-        return keys[0][len(result_key_prefix):]
+        return keys[0][len(job_key_prefix):]
