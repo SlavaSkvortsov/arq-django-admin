@@ -66,13 +66,6 @@ class JobsCreator:
         assert job
         return job
 
-    async def create_complete(self) -> Job:
-        job = await self.redis.enqueue_job('successful_task')
-        assert job
-        await self.worker.main()
-
-        return job
-
     async def create_running(self) -> Job:
         job = await self.redis.enqueue_job('running_task')
         assert job
@@ -102,7 +95,6 @@ async def jobs_creator(redis: ArqRedis, create_worker: Any) -> JobsCreator:
 async def all_jobs(jobs_creator: JobsCreator) -> List[Job]:
     # the order matters
     return [
-        await jobs_creator.create_complete(),
         await jobs_creator.create_running(),
         await jobs_creator.create_deferred(),
         await jobs_creator.create_queued(),
