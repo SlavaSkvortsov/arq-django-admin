@@ -2,8 +2,8 @@ from arq.connections import RedisSettings
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 
-ARQ_QUEUES = getattr(settings, 'ARQ_QUEUES', None)
-if ARQ_QUEUES is None:
+ARQ_QUEUES = getattr(settings, 'ARQ_QUEUES', {})
+if not ARQ_QUEUES:
     raise ImproperlyConfigured('You have to define ARQ_QUEUES in settings.py')
 
 if not all(isinstance(redis_settings, RedisSettings) for redis_settings in ARQ_QUEUES.values()):

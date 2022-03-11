@@ -1,5 +1,7 @@
 -r requirements.txt
 
+aioredis<2.0
+
 asynctest==0.13.0
 pytest==6.0.2
 pytest-django==4.1.0

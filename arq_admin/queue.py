@@ -1,6 +1,6 @@
 import asyncio
 from dataclasses import dataclass
-from typing import List, NamedTuple, Optional
+from typing import List, NamedTuple, Optional, Union
 
 from arq import ArqRedis
 from arq.connections import RedisSettings
@@ -11,6 +11,7 @@ from django.utils import timezone
 from arq_admin import settings
 from arq_admin.job import JobInfo
 from arq_admin.redis import get_redis
+from arq_admin.utils import is_redis_py
 
 
 class QueueStats(NamedTuple):
@@ -38,7 +39,10 @@ class Queue:
 
     async def get_jobs(self, status: Optional[JobStatus] = None) -> List[JobInfo]:
         async with get_redis(self.redis_settings) as redis:
-            job_ids = set(await redis.zrangebyscore(self.name))
+            if is_redis_py(redis):
+                job_ids = set(await redis.zrangebyscore(self.name, '-inf', 'inf'))
+            else:
+                job_ids = set(await redis.zrangebyscore(self.name))
             result_keys = await redis.keys(f'{result_key_prefix}*')
             job_ids |= {key[len(result_key_prefix):] for key in result_keys}
 
@@ -53,7 +57,10 @@ class Queue:
 
     async def get_stats(self) -> QueueStats:
         async with get_redis(self.redis_settings) as redis:
-            job_ids = set(await redis.zrangebyscore(self.name))
+            if is_redis_py(redis):
+                job_ids = set(await redis.zrangebyscore(self.name, '-inf', 'inf'))
+            else:
+                job_ids = set(await redis.zrangebyscore(self.name))
             result_keys = await redis.keys(f'{result_key_prefix}*')
             job_ids |= {key[len(result_key_prefix):] for key in result_keys}
 
@@ -75,7 +82,10 @@ class Queue:
                 return await self._get_job_by_id(job_id, redis)
         return await self._get_job_by_id(job_id, redis)
 
-    async def _get_job_by_id(self, job_id: str, redis: ArqRedis) -> JobInfo:
+    async def _get_job_by_id(self, job_id: Union[str, bytes], redis: ArqRedis) -> JobInfo:
+        if isinstance(job_id, bytes):
+            job_id = job_id.decode('utf8')
+
         arq_job = ArqJob(
             job_id=job_id,
             redis=redis,
@@ -105,7 +115,10 @@ class Queue:
 
         return job_info
 
-    async def _get_job_status(self, job_id: str, redis: ArqRedis) -> JobStatus:
+    async def _get_job_status(self, job_id: Union[str, bytes], redis: ArqRedis) -> JobStatus:
+        if isinstance(job_id, bytes):
+            job_id = job_id.decode('utf8')
+
         arq_job = ArqJob(
             job_id=job_id,
             redis=redis,
