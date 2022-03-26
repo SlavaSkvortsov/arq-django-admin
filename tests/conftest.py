@@ -30,7 +30,12 @@ async def create_worker(redis: ArqRedis) -> AsyncGenerator[Callable[[Any], Worke
     def create(functions: Sequence[Union[Function, WorkerCoroutine]], **kwargs: Any) -> Worker:
         nonlocal worker
         worker = Worker(
-            functions=functions, redis_pool=redis, burst=True, max_burst_jobs=100, poll_delay=0, **kwargs,
+            functions=functions,
+            redis_pool=redis,
+            burst=True,
+            max_burst_jobs=100,
+            poll_delay=0,
+            **kwargs,
         )
         return worker
 
@@ -81,7 +86,7 @@ class JobsCreator:
     async def create_unserializable(self) -> Job:
         job = await self.redis.enqueue_job('successful_task')
         assert job
-        self.redis.set(job_key_prefix + job.job_id, 'RANDOM TEXT')
+        await self.redis.set(job_key_prefix + job.job_id, 'RANDOM TEXT')
         return job
 
 
