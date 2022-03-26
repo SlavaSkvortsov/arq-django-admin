@@ -35,8 +35,7 @@ class TestView(TestCase):
         assert isinstance(result, TemplateResponse)
         assert len(result.context_data['object_list']) == 3
 
-    @pytest.mark.usefixtures('all_jobs')
-    @pytest.mark.usefixtures('unserializable_job')
+    @pytest.mark.usefixtures('unserializable_job', 'all_jobs')
     def test_all_queue_jobs_view_with_unserializable(self) -> None:
         url = reverse('arq_admin:all_jobs', kwargs={'queue_name': default_queue_name})
 
