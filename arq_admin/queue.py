@@ -1,6 +1,6 @@
 import asyncio
 from dataclasses import dataclass
-from typing import List, NamedTuple, Optional
+from typing import List, NamedTuple, Optional, Set
 
 from arq import ArqRedis
 from arq.connections import RedisSettings
@@ -110,7 +110,7 @@ class Queue:
         )
         return await arq_job.status()
 
-    async def _get_job_ids(self, redis: ArqRedis) -> set[str]:
+    async def _get_job_ids(self, redis: ArqRedis) -> Set[str]:
         raw_job_ids = set(await redis.zrangebyscore(self.name, '-inf', 'inf'))
         result_keys = await redis.keys(f'{result_key_prefix}*')
         raw_job_ids |= {key[len(result_key_prefix):] for key in result_keys}
