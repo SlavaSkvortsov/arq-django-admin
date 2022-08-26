@@ -1,84 +1,74 @@
-import asyncio
-
 import pytest
+from arq import ArqRedis
 from arq.constants import default_queue_name, job_key_prefix
-from django.conf import settings
-from django.contrib.auth.models import User
 from django.template.response import TemplateResponse
-from django.test import TestCase
+from django.test import AsyncClient
 from django.urls import reverse
 
-from arq_admin.redis import get_redis
+
+@pytest.mark.asyncio()
+@pytest.mark.django_db()
+@pytest.mark.usefixtures('django_login')
+async def test_queues_view(async_client: AsyncClient) -> None:
+    url = reverse('arq_admin:home')
+    result = await async_client.get(url)
+    assert isinstance(result, TemplateResponse)
+    assert len(result.context_data['object_list']) == 1
 
 
-class TestView(TestCase):
+@pytest.mark.asyncio()
+@pytest.mark.django_db()
+@pytest.mark.usefixtures('django_login', 'all_jobs')
+async def test_all_queue_jobs_view(async_client: AsyncClient) -> None:
+    url = reverse('arq_admin:all_jobs', kwargs={'queue_name': default_queue_name})
 
-    def setUp(self) -> None:
-        password = 'admin'
-        admin_user: User = User.objects.create_superuser('admin', 'admin@admin.com', password)
-        self.client.login(username=admin_user.username, password=password)
+    result = await async_client.get(url)
+    assert isinstance(result, TemplateResponse)
+    assert len(result.context_data['object_list']) == 4
 
-    def tearDown(self) -> None:
-        User.objects.all().delete()
 
-    def test_queues_view(self) -> None:
-        url = reverse('arq_admin:home')
-        result = self.client.get(url)
-        assert isinstance(result, TemplateResponse)
-        assert len(result.context_data['object_list']) == 1
+@pytest.mark.asyncio()
+@pytest.mark.django_db()
+@pytest.mark.usefixtures('django_login', 'all_jobs', 'unserializable_job')
+async def test_all_queue_jobs_view_with_unserializable(async_client: AsyncClient) -> None:
+    url = reverse('arq_admin:all_jobs', kwargs={'queue_name': default_queue_name})
 
-    @pytest.mark.usefixtures('all_jobs')
-    def test_all_queue_jobs_view(self) -> None:
-        url = reverse('arq_admin:all_jobs', kwargs={'queue_name': default_queue_name})
+    result = await async_client.get(url)
+    assert isinstance(result, TemplateResponse)
+    assert len(result.context_data['object_list']) == 5
 
-        result = self.client.get(url)
-        assert isinstance(result, TemplateResponse)
-        assert len(result.context_data['object_list']) == 3
 
-    @pytest.mark.usefixtures('unserializable_job', 'all_jobs')
-    def test_all_queue_jobs_view_with_unserializable(self) -> None:
-        url = reverse('arq_admin:all_jobs', kwargs={'queue_name': default_queue_name})
+@pytest.mark.asyncio()
+@pytest.mark.django_db()
+@pytest.mark.usefixtures('django_login', 'all_jobs')
+async def test_queued_queue_jobs_view(async_client: AsyncClient) -> None:
+    url = reverse('arq_admin:queued_jobs', kwargs={'queue_name': default_queue_name})
 
-        result = self.client.get(url)
-        assert isinstance(result, TemplateResponse)
-        assert len(result.context_data['object_list']) == 4
+    result = await async_client.get(url)
+    assert isinstance(result, TemplateResponse)
+    assert len(result.context_data['object_list']) == 1
 
-    @pytest.mark.usefixtures('all_jobs')
-    def test_queued_queue_jobs_view(self) -> None:
-        url = reverse('arq_admin:queued_jobs', kwargs={'queue_name': default_queue_name})
 
-        result = self.client.get(url)
-        assert isinstance(result, TemplateResponse)
-        assert len(result.context_data['object_list']) == 1
+@pytest.mark.asyncio()
+@pytest.mark.django_db()
+@pytest.mark.usefixtures('django_login', 'all_jobs')
+async def test_deferred_queue_jobs_view(async_client: AsyncClient) -> None:
+    url = reverse('arq_admin:deferred_jobs', kwargs={'queue_name': default_queue_name})
 
-    @pytest.mark.usefixtures('all_jobs')
-    def test_running_queue_jobs_view(self) -> None:
-        url = reverse('arq_admin:running_jobs', kwargs={'queue_name': default_queue_name})
+    result = await async_client.get(url)
+    assert isinstance(result, TemplateResponse)
+    assert len(result.context_data['object_list']) == 1
 
-        result = self.client.get(url)
-        assert isinstance(result, TemplateResponse)
-        assert len(result.context_data['object_list']) == 1
 
-    @pytest.mark.usefixtures('all_jobs')
-    def test_deferred_queue_jobs_view(self) -> None:
-        url = reverse('arq_admin:deferred_jobs', kwargs={'queue_name': default_queue_name})
+@pytest.mark.asyncio()
+@pytest.mark.django_db()
+@pytest.mark.usefixtures('django_login', 'all_jobs')
+async def test_job_detail_view(redis: ArqRedis, async_client: AsyncClient) -> None:
+    keys = await redis.keys(job_key_prefix + '*')
+    job_id = keys[0][len(job_key_prefix):].decode('utf-8')
 
-        result = self.client.get(url)
-        assert isinstance(result, TemplateResponse)
-        assert len(result.context_data['object_list']) == 1
+    url = reverse('arq_admin:job_detail', kwargs={'queue_name': default_queue_name, 'job_id': job_id})
 
-    @pytest.mark.usefixtures('all_jobs')
-    def test_job_detail_view(self) -> None:
-        job_id = asyncio.run(self._get_job_id())
-        url = reverse('arq_admin:job_detail', kwargs={'queue_name': default_queue_name, 'job_id': job_id})
-
-        result = self.client.get(url)
-        assert isinstance(result, TemplateResponse)
-        assert result.context_data['object'].job_id == job_id
-
-    @staticmethod
-    async def _get_job_id() -> str:
-        async with get_redis(settings.REDIS_SETTINGS) as redis:
-            keys = await redis.keys(job_key_prefix + '*')
-
-        return keys[0][len(job_key_prefix):]
+    result = await async_client.get(url)
+    assert isinstance(result, TemplateResponse)
+    assert result.context_data['object'].job_id == job_id

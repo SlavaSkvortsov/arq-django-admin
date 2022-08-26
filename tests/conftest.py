@@ -6,24 +6,29 @@ from typing import (
 )
 
 import pytest
+import pytest_asyncio
 from arq import ArqRedis, Worker
 from arq.constants import job_key_prefix
-from arq.jobs import Job
+from arq.jobs import Job, JobStatus
 from arq.typing import WorkerCoroutine
 from arq.worker import Function
+from asgiref.sync import sync_to_async
+from django.contrib.auth.models import User
+from django.test import AsyncClient
 
 from arq_admin.redis import get_redis
 from tests.settings import REDIS_SETTINGS
 
 
-@pytest.fixture(autouse=True)
+@pytest_asyncio.fixture(autouse=True)
 async def redis() -> AsyncGenerator[ArqRedis, None]:
     async with get_redis(REDIS_SETTINGS) as redis:
         await redis.flushall()
         yield redis
+        await redis.flushall()
 
 
-@pytest.fixture()
+@pytest_asyncio.fixture()
 async def create_worker(redis: ArqRedis) -> AsyncGenerator[Callable[[Any], Worker], None]:
     worker: Optional[Worker] = None
 
@@ -50,11 +55,11 @@ async def deferred_task(_ctx: Any) -> None:
 
 
 async def running_task(_ctx: Any) -> None:
-    await asyncio.sleep(0.2)
+    await asyncio.sleep(0.5)
 
 
-async def successful_task(_ctx: Any) -> None:
-    pass
+async def successful_task(_ctx: Any) -> str:
+    return 'success'
 
 
 async def failed_task(_ctx: Any) -> None:
@@ -67,45 +72,75 @@ class JobsCreator:
     redis: ArqRedis
 
     async def create_queued(self) -> Job:
-        job = await self.redis.enqueue_job('successful_task')
+        job = await self.redis.enqueue_job('successful_task', _job_id='queued_task')
         assert job
         return job
 
-    async def create_running(self) -> Job:
-        job = await self.redis.enqueue_job('running_task')
+    async def create_finished(self) -> Job:
+        job = await self.redis.enqueue_job('successful_task', _job_id='finished_task')
         assert job
+        await self.worker.main()
+
+        return job
+
+    async def create_running(self) -> Optional[Job]:
+        job = await self.redis.enqueue_job('running_task', _job_id='running_task')
         with suppress(asyncio.TimeoutError):
             await asyncio.wait_for(self.worker.main(), 0.1)
+
         return job
 
     async def create_deferred(self) -> Job:
-        job = await self.redis.enqueue_job('deferred_task', _defer_by=9000)
+        job = await self.redis.enqueue_job('deferred_task', _defer_by=9000, _job_id='deferred_task')
         assert job
         return job
 
     async def create_unserializable(self) -> Job:
-        job = await self.redis.enqueue_job('successful_task')
+        job = await self.redis.enqueue_job('successful_task', _job_id='unserializable_task')
         assert job
         await self.redis.set(job_key_prefix + job.job_id, 'RANDOM TEXT')
         return job
 
 
-@pytest.fixture()
+@pytest_asyncio.fixture()
 async def jobs_creator(redis: ArqRedis, create_worker: Any) -> JobsCreator:
     worker = create_worker(functions=[deferred_task, running_task, successful_task, failed_task])
     return JobsCreator(worker=worker, redis=redis)
 
 
-@pytest.fixture()
+@pytest_asyncio.fixture()
 async def all_jobs(jobs_creator: JobsCreator) -> List[Job]:
-    # the order matters
+    while True:
+        finished_job = await jobs_creator.create_finished()
+        running_job = await jobs_creator.create_running()
+        if not running_job:
+            continue
+
+        if (await running_job.status()) == JobStatus.in_progress:
+            break
+
+        await jobs_creator.redis.flushdb()
+
     return [
-        await jobs_creator.create_running(),
+        finished_job,
+        running_job,
         await jobs_creator.create_deferred(),
         await jobs_creator.create_queued(),
     ]
 
 
-@pytest.fixture()
+@pytest_asyncio.fixture()
 async def unserializable_job(jobs_creator: JobsCreator) -> Job:
     return await jobs_creator.create_unserializable()
+
+
+@pytest_asyncio.fixture()
+@pytest.mark.django_db()
+async def django_login(async_client: AsyncClient) -> AsyncGenerator[None, None]:
+    password = 'admin'
+    admin_user: User = await sync_to_async(User.objects.create_superuser)('admin', 'admin@admin.com', password)
+    await sync_to_async(async_client.login)(username=admin_user.username, password=password)
+
+    yield
+
+    await sync_to_async(User.objects.all().delete)()

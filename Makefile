@@ -13,7 +13,7 @@ coverage-report:
 coverage: coverage-collect coverage-report
 
 mypy:
-	mypy .
+	mypy arq_admin tests *.py
 
 flake8:
 	flake8 .
@@ -24,7 +24,4 @@ isort:
 bandit:
 	bandit -q -r .
 
-safety:
-	safety check --bare --full-report -r requirements.txt -r requirements-dev.txt
-
-check: isort flake8 mypy bandit safety test
+check: isort flake8 mypy bandit test

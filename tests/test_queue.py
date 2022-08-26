@@ -1,4 +1,3 @@
-from typing import List
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -11,21 +10,26 @@ from tests.conftest import JobsCreator
 
 
 @pytest.mark.asyncio()
-async def test_all_get_jobs(all_jobs: List[Job]) -> None:
+@pytest.mark.usefixtures('all_jobs')
+async def test_all_get_jobs() -> None:
     queue = Queue.from_name(default_queue_name)
-    assert len(await queue.get_jobs()) == 3
+    jobs = await queue.get_jobs()
+    assert len(jobs) == 4
 
 
 @pytest.mark.asyncio()
-async def test_status_filter(all_jobs: List[Job]) -> None:
+@pytest.mark.usefixtures('all_jobs')
+async def test_status_filter() -> None:
     queue = Queue.from_name(default_queue_name)
     assert len(await queue.get_jobs(JobStatus.deferred)) == 1
     assert len(await queue.get_jobs(JobStatus.in_progress)) == 1
     assert len(await queue.get_jobs(JobStatus.queued)) == 1
+    assert len(await queue.get_jobs(JobStatus.complete)) == 1
 
 
 @pytest.mark.asyncio()
-async def test_stats(all_jobs: List[Job]) -> None:
+@pytest.mark.usefixtures('all_jobs')
+async def test_stats() -> None:
     queue = Queue.from_name(default_queue_name)
     assert await queue.get_stats() == QueueStats(
         name=default_queue_name,
