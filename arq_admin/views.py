@@ -53,9 +53,10 @@ class BaseJobListView(ListView):
         return self.status.value.capitalize() if self.status else 'Unknown'
 
     def get_queryset(self) -> List[JobInfo]:
-        queue_name = self.kwargs['queue_name']
-        queue = Queue.from_name(queue_name)
-        return sorted(asyncio.run(queue.get_jobs(status=self.status)), key=attrgetter('enqueue_time'))
+        queue_name = self.kwargs['queue_name']  # pragma: no cover  # looks like a pytest-cov bug coz the rows below
+        queue = Queue.from_name(queue_name)  # pragma: no cover     # are covered
+        jobs = asyncio.run(queue.get_jobs(status=self.status))
+        return sorted(jobs, key=attrgetter('enqueue_time'))
 
     def get_context_data(self, **kwargs: Any) -> Dict[str, Any]:
         context = super().get_context_data(**kwargs)
@@ -88,7 +89,7 @@ class JobDetailView(DetailView):
     template_name = 'arq_admin/job_detail.html'
 
     def get_object(self, queryset: Optional[Any] = None) -> JobInfo:
-        queue = Queue.from_name(self.kwargs['queue_name'])
+        queue = Queue.from_name(self.kwargs['queue_name'])  # pragma: no cover
         return asyncio.run(queue.get_job_by_id(self.kwargs['job_id']))
 
     def get_context_data(self, **kwargs: Any) -> Dict[str, Any]:

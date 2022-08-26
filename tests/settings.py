@@ -66,3 +66,4 @@ TEMPLATES = [
 ]
 
 STATIC_URL = '/static/'
+USE_TZ = True
