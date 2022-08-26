@@ -35,7 +35,12 @@ async def create_worker(redis: ArqRedis) -> AsyncGenerator[Callable[[Any], Worke
     def create(functions: Sequence[Union[Function, WorkerCoroutine]], **kwargs: Any) -> Worker:
         nonlocal worker
         worker = Worker(
-            functions=functions, redis_pool=redis, burst=True, max_burst_jobs=100, poll_delay=0, **kwargs,
+            functions=functions,
+            redis_pool=redis,
+            burst=True,
+            max_burst_jobs=100,
+            poll_delay=0,
+            **kwargs,
         )
         return worker
 
