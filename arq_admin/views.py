@@ -18,18 +18,21 @@ class QueueListView(ListView):
     template_name = 'arq_admin/queues.html'
 
     def get_queryset(self) -> List[QueueStats]:
-        async def _gather_queues() -> List[QueueStats]:
-            tasks = [Queue.from_name(name).get_stats() for name in ARQ_QUEUES.keys()]
 
-            return await asyncio.gather(*tasks)
-
-        return asyncio.run(_gather_queues())
+        result = asyncio.run(self._gather_queues())
+        return result
 
     def get_context_data(self, **kwargs: Any) -> Dict[str, Any]:
         context = super().get_context_data(**kwargs)
         context.update(admin.site.each_context(self.request))
 
         return context
+
+    @staticmethod
+    async def _gather_queues() -> List[QueueStats]:
+        tasks = [Queue.from_name(name).get_stats() for name in ARQ_QUEUES.keys()]  # pragma: nocover
+
+        return await asyncio.gather(*tasks)
 
 
 @method_decorator(staff_member_required, name='dispatch')
