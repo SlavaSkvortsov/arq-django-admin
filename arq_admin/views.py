@@ -1,10 +1,13 @@
 import asyncio
+from functools import cached_property
 from operator import attrgetter
 from typing import Any, Dict, List, Optional
 
 from arq.jobs import JobStatus
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.contrib.admin.views.decorators import staff_member_required
+from django.http import HttpRequest, HttpResponse
+from django.shortcuts import redirect
 from django.utils.decorators import method_decorator
 from django.views.generic import DetailView, ListView
 
@@ -95,3 +98,31 @@ class JobDetailView(DetailView):
         context['queue_name'] = self.kwargs['queue_name']
 
         return context
+
+
+class JobAbortView(DetailView):
+    template_name = 'arq_admin/job_abort.html'
+
+    def get_object(self, queryset: Optional[Any] = None) -> JobInfo:
+        return asyncio.run(self._queue.get_job_by_id(self.kwargs['job_id']))
+
+    def get_context_data(self, **kwargs: Any) -> Dict[str, Any]:
+        context = super().get_context_data(**kwargs)
+        context['queue_name'] = self.kwargs['queue_name']
+
+        return context
+
+    def post(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:  # pragma: nocover
+        aborted = asyncio.run(self._queue.abort_job(self.kwargs['job_id']))
+        if aborted:
+            messages.success(request, 'Job aborted successfully')
+        elif aborted is None:
+            messages.warning(request, 'An issue happened while aborting the job, but it may be aborted anyway')
+        else:
+            messages.error(request, 'Job was not aborted')
+
+        return redirect('arq_admin:job_detail', queue_name=self.kwargs['queue_name'], job_id=self.kwargs['job_id'])
+
+    @cached_property
+    def _queue(self) -> Queue:  # pragma: nocover
+        return Queue.from_name(self.kwargs['queue_name'])

@@ -24,3 +24,5 @@ if ARQ_DESERIALIZER:
         raise ImproperlyConfigured('You cannot define both ARQ_DESERIALIZER and ARQ_DESERIALIZER_BY_QUEUE')
 
     ARQ_DESERIALIZER_BY_QUEUE = defaultdict(lambda: ARQ_DESERIALIZER)
+
+ARQ_JOB_ABORT_TIMEOUT = getattr(settings, 'ARQ_JOB_ABORT_TIMEOUT', 5)

@@ -1,0 +1,46 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block title %}Job {{ object.id }} {{ block.super }}{% endblock %}
+
+{% block extrastyle %}
+  {{ block.super }}
+  <style>
+      .data {
+          display: inline-block;
+          float: left;
+          width: 80%;
+          font-size: 12px;
+          padding-top: 3px;
+      }
+  </style>
+  <link href="{% static 'admin/css/forms.css' %}" type="text/css" rel="stylesheet">
+{% endblock %}
+
+{% block breadcrumbs %}
+  <div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">Home</a> &rsaquo;
+    <a href="{% url 'arq_admin:home' %}">Django ARQ</a> &rsaquo;
+    <a href="{% url 'arq_admin:all_jobs' queue_name %}">{{ queue_name }}</a> &rsaquo;
+    <a href="{% url 'arq_admin:job_detail' queue_name object.job_id %}">{{ object.job_id }}</a> &rsaquo;
+    <a href="{% url 'arq_admin:job_abort' queue_name object.job_id %}">{{ object.job_id }}</a>
+  </div>
+{% endblock %}
+
+{% block content_title %}<h1>Job Info</h1>{% endblock %}
+
+{% block content %}
+  <div id="content-main" class="delete-confirmation">
+    <form method="post">
+      {% csrf_token %}
+      <h1>Are you sure you want to abort this job?</h1>
+      <p>
+        You need to have <b>allow_abort_jobs=True</b> set for the queue to be able to abort the job.
+        <a href="https://arq-docs.helpmanual.io/#retrying-jobs-and-cancellation">More info</a>
+      </p>
+
+      <input type="submit" value="Yes, I'm sure">
+      <a class="button cancel-link" href="{% url 'arq_admin:job_detail' queue_name object.job_id %}">No, take me back</a>
+    </form>
+  </div>
+{% endblock %}
