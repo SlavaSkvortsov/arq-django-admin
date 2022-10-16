@@ -30,7 +30,7 @@ class QueueListView(ListView):
 
     @staticmethod
     async def _gather_queues() -> List[QueueStats]:
-        tasks = [Queue.from_name(name).get_stats() for name in ARQ_QUEUES.keys()]
+        tasks = [Queue.from_name(name).get_stats() for name in ARQ_QUEUES.keys()]  # pragma: nocover
 
         return await asyncio.gather(*tasks)
 
