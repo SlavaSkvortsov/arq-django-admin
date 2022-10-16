@@ -1,4 +1,6 @@
-from typing import Dict
+import warnings
+from collections import defaultdict
+from typing import Any, Dict
 
 from arq.connections import RedisSettings
 from django.conf import settings
@@ -13,3 +15,12 @@ if not all(isinstance(redis_settings, RedisSettings) for redis_settings in ARQ_Q
     raise ImproperlyConfigured('All values of "ARQ_QUEUES" must be RedisSettings')
 
 ARQ_DESERIALIZER = getattr(settings, 'ARQ_DESERIALIZER', None)
+ARQ_DESERIALIZER_BY_QUEUE = getattr(settings, 'ARQ_DESERIALIZER_BY_QUEUE', {})
+
+if ARQ_DESERIALIZER:
+    warnings.warn('ARQ_DESERIALIZER is deprecated, use ARQ_DESERIALIZER_BY_QUEUE', DeprecationWarning)
+
+    if ARQ_DESERIALIZER_BY_QUEUE:
+        raise ImproperlyConfigured('You cannot define both ARQ_DESERIALIZER and ARQ_DESERIALIZER_BY_QUEUE')
+
+    ARQ_DESERIALIZER_BY_QUEUE = defaultdict(lambda: ARQ_DESERIALIZER)
