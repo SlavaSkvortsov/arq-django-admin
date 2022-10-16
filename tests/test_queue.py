@@ -1,3 +1,4 @@
+import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -65,3 +66,23 @@ async def test_deserialize_error(mocked_job_info: MagicMock, jobs_creator: JobsC
     queue = Queue.from_name(default_queue_name)
     job_info = await queue.get_job_by_id(job.job_id)
     assert job_info.function == "Unknown, can't deserialize"
+
+
+@pytest.mark.asyncio()
+@patch.object(Job, 'abort')
+@pytest.mark.parametrize('success', [True, False])
+async def test_abort_job(mocked_abort: AsyncMock, jobs_creator: JobsCreator, success: bool) -> None:
+    mocked_abort.return_value = success
+    job = await jobs_creator.create_queued()
+    queue = Queue.from_name(default_queue_name)
+
+    assert await queue.abort_job(job.job_id) is success
+
+
+@pytest.mark.asyncio()
+@patch.object(Job, 'abort')
+async def test_abort_job_timeout(mocked_abort: AsyncMock, jobs_creator: JobsCreator) -> None:
+    mocked_abort.side_effect = asyncio.TimeoutError
+    job = await jobs_creator.create_queued()
+    queue = Queue.from_name(default_queue_name)
+    assert await queue.abort_job(job.job_id) is None

@@ -1,4 +1,5 @@
 import asyncio
+from contextlib import suppress
 from dataclasses import dataclass
 from typing import List, Optional, Set
 
@@ -77,6 +78,20 @@ class Queue:
             async with get_redis(self.redis_settings) as redis:
                 return await self._get_job_by_id(job_id, redis)
         return await self._get_job_by_id(job_id, redis)
+
+    async def abort_job(self, job_id: str) -> Optional[bool]:
+        # None here means we are not sure if the job was aborted or not
+        async with get_redis(self.redis_settings) as redis:
+            arq_job = ArqJob(
+                job_id=job_id,
+                redis=redis,
+                _queue_name=self.name,
+                _deserializer=settings.ARQ_DESERIALIZER_BY_QUEUE.get(self.name),
+            )
+            with suppress(asyncio.TimeoutError):
+                return await arq_job.abort(timeout=settings.ARQ_JOB_ABORT_TIMEOUT)
+
+        return None
 
     async def _get_job_by_id(self, job_id: str, redis: ArqRedis) -> JobInfo:
         arq_job = ArqJob(

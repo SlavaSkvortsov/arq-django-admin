@@ -56,3 +56,8 @@ ARQ_DESERIALIZER_BY_QUEUE = {
     'arq:another_queue_name': custom_job_deserializer,
 }
 ```
+
+- You can change timeout for job aborting:
+```python
+ARQ_JOB_ABORT_TIMEOUT = 10
+```
