@@ -52,5 +52,7 @@ urlpatterns = [
 
 - If you use custom job serializer, you need to add deserializer to `settings.py`:
 ```python
-ARQ_DESERIALIZER = custom_job_deserializer
+ARQ_DESERIALIZER_BY_QUEUE = {
+    'arq:another_queue_name': custom_job_deserializer,
+}
 ```
