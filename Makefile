@@ -2,7 +2,7 @@ requirements:
 	pip install -r requirements-dev.txt
 
 test:
-	pytest
+	python -m pytest
 
 coverage-collect:
 	coverage run -m pytest
