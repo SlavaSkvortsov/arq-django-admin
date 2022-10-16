@@ -76,7 +76,7 @@ class Queue:
             job_id=job_id,
             redis=redis,
             _queue_name=self.name,
-            _deserializer=settings.ARQ_DESERIALIZER,
+            _deserializer=settings.ARQ_DESERIALIZER_BY_QUEUE.get(self.name),
         )
 
         unknown_function_msg = "Can't find job"
@@ -106,7 +106,7 @@ class Queue:
             job_id=job_id,
             redis=redis,
             _queue_name=self.name,
-            _deserializer=settings.ARQ_DESERIALIZER,
+            _deserializer=settings.ARQ_DESERIALIZER_BY_QUEUE.get(self.name),
         )
         return await arq_job.status()
 
