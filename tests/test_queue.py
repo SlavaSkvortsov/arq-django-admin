@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from arq.constants import default_queue_name
@@ -39,6 +39,21 @@ async def test_stats() -> None:
         queued_jobs=1,
         running_jobs=1,
         deferred_jobs=1,
+    )
+
+
+@pytest.mark.asyncio()
+@patch.object(Queue, '_get_job_ids')
+async def test_stats_with_error(mocked_get_job_ids: AsyncMock) -> None:
+    error_text = 'test error'
+    mocked_get_job_ids.side_effect = Exception(error_text)
+    queue = Queue.from_name(default_queue_name)
+    assert await queue.get_stats() == QueueStats(
+        name=default_queue_name,
+        host=settings.REDIS_SETTINGS.host,
+        port=settings.REDIS_SETTINGS.port,
+        database=settings.REDIS_SETTINGS.database,
+        error=error_text,
     )
 
 

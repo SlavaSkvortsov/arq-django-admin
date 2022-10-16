@@ -1,6 +1,6 @@
 import asyncio
 from dataclasses import dataclass
-from typing import List, NamedTuple, Optional, Set
+from typing import List, Optional, Set
 
 from arq import ArqRedis
 from arq.connections import RedisSettings
@@ -13,15 +13,18 @@ from arq_admin.job import JobInfo
 from arq_admin.redis import get_redis
 
 
-class QueueStats(NamedTuple):
+@dataclass
+class QueueStats:
     name: str
     host: str
     port: int
     database: int
 
-    queued_jobs: int
-    running_jobs: int
-    deferred_jobs: int
+    queued_jobs: Optional[int] = None
+    running_jobs: Optional[int] = None
+    deferred_jobs: Optional[int] = None
+
+    error: Optional[str] = None
 
 
 @dataclass
@@ -50,20 +53,24 @@ class Queue:
         return jobs
 
     async def get_stats(self) -> QueueStats:
-        async with get_redis(self.redis_settings) as redis:
-            job_ids = await self._get_job_ids(redis)
-
-            statuses = await asyncio.gather(*[self._get_job_status(job_id, redis) for job_id in job_ids])
-
-        return QueueStats(
+        result = QueueStats(
             name=self.name,
             host=str(self.redis_settings.host),
             port=self.redis_settings.port,
             database=self.redis_settings.database,
-            queued_jobs=len([status for status in statuses if status == JobStatus.queued]),
-            running_jobs=len([status for status in statuses if status == JobStatus.in_progress]),
-            deferred_jobs=len([status for status in statuses if status == JobStatus.deferred]),
         )
+        try:
+            async with get_redis(self.redis_settings) as redis:
+                job_ids = await self._get_job_ids(redis)
+                statuses = await asyncio.gather(*[self._get_job_status(job_id, redis) for job_id in job_ids])
+        except Exception as ex:  # noqa: B902
+            result.error = str(ex)
+        else:
+            result.queued_jobs = len([status for status in statuses if status == JobStatus.queued])
+            result.running_jobs = len([status for status in statuses if status == JobStatus.in_progress])
+            result.deferred_jobs = len([status for status in statuses if status == JobStatus.deferred])
+
+        return result
 
     async def get_job_by_id(self, job_id: str, redis: Optional[ArqRedis] = None) -> JobInfo:
         if redis is None:
