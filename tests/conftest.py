@@ -7,7 +7,7 @@ from typing import (
 
 import pytest
 import pytest_asyncio
-from arq import ArqRedis, Worker
+from arq import ArqRedis, Worker, create_pool
 from arq.constants import job_key_prefix
 from arq.jobs import Job, JobStatus
 from arq.typing import WorkerCoroutine
@@ -16,16 +16,16 @@ from asgiref.sync import sync_to_async
 from django.contrib.auth.models import User
 from django.test import AsyncClient
 
-from arq_admin.redis import get_redis
 from tests.settings import REDIS_SETTINGS
 
 
 @pytest_asyncio.fixture(autouse=True)
 async def redis() -> AsyncGenerator[ArqRedis, None]:
-    async with get_redis(REDIS_SETTINGS) as redis:
-        await redis.flushall()
-        yield redis
-        await redis.flushall()
+    client = await create_pool(REDIS_SETTINGS)
+    await client.flushall()
+    yield client
+    await client.flushall()
+    await client.close()
 
 
 @pytest_asyncio.fixture()

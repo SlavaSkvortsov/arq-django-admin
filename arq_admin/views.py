@@ -1,5 +1,4 @@
 import asyncio
-from functools import cached_property
 from operator import attrgetter
 from typing import Any, Dict, List, Optional
 
@@ -21,7 +20,6 @@ class QueueListView(ListView):
     template_name = 'arq_admin/queues.html'
 
     def get_queryset(self) -> List[QueueStats]:
-
         result = asyncio.run(self._gather_queues())
         return result
 
@@ -32,10 +30,13 @@ class QueueListView(ListView):
         return context
 
     @staticmethod
-    async def _gather_queues() -> List[QueueStats]:
-        tasks = [Queue.from_name(name).get_stats() for name in ARQ_QUEUES.keys()]  # pragma: nocover
+    async def _get_queue_stats(queue_name: str) -> QueueStats:
+        async with Queue.from_name(queue_name) as queue:
+            return await queue.get_stats()
 
-        return await asyncio.gather(*tasks)
+    @classmethod
+    async def _gather_queues(cls) -> List[QueueStats]:
+        return list(await asyncio.gather(*[cls._get_queue_stats(name) for name in ARQ_QUEUES.keys()]))
 
 
 @method_decorator(staff_member_required, name='dispatch')
@@ -54,9 +55,8 @@ class BaseJobListView(ListView):
         return self.status.value.capitalize() if self.status else 'Unknown'
 
     def get_queryset(self) -> List[JobInfo]:
-        queue_name = self.kwargs['queue_name']  # pragma: no cover  # looks like a pytest-cov bug coz the rows below
-        queue = Queue.from_name(queue_name)  # pragma: no cover     # are covered
-        jobs = asyncio.run(queue.get_jobs(status=self.status))
+        queue_name = self.kwargs['queue_name']  # pragma: no cover
+        jobs = asyncio.run(self._get_queue_jobs(queue_name))
         return sorted(jobs, key=attrgetter('enqueue_time'))
 
     def get_context_data(self, **kwargs: Any) -> Dict[str, Any]:
@@ -68,6 +68,10 @@ class BaseJobListView(ListView):
         })
 
         return context
+
+    async def _get_queue_jobs(self, queue_name: str) -> List[JobInfo]:
+        async with Queue.from_name(queue_name) as queue:
+            return await queue.get_jobs(status=self.status)
 
 
 class AllJobListView(BaseJobListView):
@@ -90,8 +94,7 @@ class JobDetailView(DetailView):
     template_name = 'arq_admin/job_detail.html'
 
     def get_object(self, queryset: Optional[Any] = None) -> JobInfo:
-        queue = Queue.from_name(self.kwargs['queue_name'])  # pragma: no cover
-        return asyncio.run(queue.get_job_by_id(self.kwargs['job_id']))
+        return asyncio.run(self._get_job_info())
 
     def get_context_data(self, **kwargs: Any) -> Dict[str, Any]:
         context = super().get_context_data(**kwargs)
@@ -99,21 +102,16 @@ class JobDetailView(DetailView):
 
         return context
 
+    async def _get_job_info(self) -> JobInfo:
+        async with Queue.from_name(self.kwargs['queue_name']) as queue:
+            return await queue.get_job_by_id(self.kwargs['job_id'])
 
-class JobAbortView(DetailView):
+
+class JobAbortView(JobDetailView):
     template_name = 'arq_admin/job_abort.html'
 
-    def get_object(self, queryset: Optional[Any] = None) -> JobInfo:
-        return asyncio.run(self._queue.get_job_by_id(self.kwargs['job_id']))
-
-    def get_context_data(self, **kwargs: Any) -> Dict[str, Any]:
-        context = super().get_context_data(**kwargs)
-        context['queue_name'] = self.kwargs['queue_name']
-
-        return context
-
     def post(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:  # pragma: nocover
-        aborted = asyncio.run(self._queue.abort_job(self.kwargs['job_id']))
+        aborted = asyncio.run(self._abort_job())
         if aborted:
             messages.success(request, 'Job aborted successfully')
         elif aborted is None:
@@ -123,6 +121,6 @@ class JobAbortView(DetailView):
 
         return redirect('arq_admin:job_detail', queue_name=self.kwargs['queue_name'], job_id=self.kwargs['job_id'])
 
-    @cached_property
-    def _queue(self) -> Queue:  # pragma: nocover
-        return Queue.from_name(self.kwargs['queue_name'])
+    async def _abort_job(self) -> Optional[bool]:
+        async with Queue.from_name(self.kwargs['queue_name']) as queue:
+            return await queue.abort_job(self.kwargs['job_id'])

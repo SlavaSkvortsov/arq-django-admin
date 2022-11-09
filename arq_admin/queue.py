@@ -1,17 +1,16 @@
 import asyncio
 from contextlib import suppress
-from dataclasses import dataclass
-from typing import List, Optional, Set
+from dataclasses import dataclass, field
+from typing import Any, List, Optional, Set
 
 from arq import ArqRedis
-from arq.connections import RedisSettings
+from arq.connections import RedisSettings, create_pool
 from arq.constants import result_key_prefix
 from arq.jobs import DeserializationError, Job as ArqJob, JobDef, JobStatus
 from django.utils import timezone
 
 from arq_admin import settings
 from arq_admin.job import JobInfo
-from arq_admin.redis import get_redis
 
 
 @dataclass
@@ -32,6 +31,14 @@ class QueueStats:
 class Queue:
     redis_settings: RedisSettings
     name: str
+    _redis: ArqRedis = field(init=False, default=None)  # type: ignore
+
+    async def __aenter__(self) -> 'Queue':
+        self._redis = await create_pool(self.redis_settings)
+        return self
+
+    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        await self._redis.close()
 
     @classmethod
     def from_name(cls, name: str) -> 'Queue':
@@ -41,15 +48,14 @@ class Queue:
         )
 
     async def get_jobs(self, status: Optional[JobStatus] = None) -> List[JobInfo]:
-        async with get_redis(self.redis_settings) as redis:
-            job_ids = await self._get_job_ids(redis)
+        job_ids = await self._get_job_ids()
 
-            if status:
-                job_ids_tuple = tuple(job_ids)
-                statuses = await asyncio.gather(*[self._get_job_status(job_id, redis) for job_id in job_ids_tuple])
-                job_ids = {job_id for (job_id, job_status) in zip(job_ids_tuple, statuses) if job_status == status}
+        if status:
+            job_ids_tuple = tuple(job_ids)
+            statuses = await asyncio.gather(*[self._get_job_status(job_id) for job_id in job_ids_tuple])
+            job_ids = {job_id for (job_id, job_status) in zip(job_ids_tuple, statuses) if job_status == status}
 
-            jobs: List[JobInfo] = await asyncio.gather(*[self.get_job_by_id(job_id, redis) for job_id in job_ids])
+        jobs: List[JobInfo] = await asyncio.gather(*[self.get_job_by_id(job_id) for job_id in job_ids])
 
         return jobs
 
@@ -61,9 +67,8 @@ class Queue:
             database=self.redis_settings.database,
         )
         try:
-            async with get_redis(self.redis_settings) as redis:
-                job_ids = await self._get_job_ids(redis)
-                statuses = await asyncio.gather(*[self._get_job_status(job_id, redis) for job_id in job_ids])
+            job_ids = await self._get_job_ids()
+            statuses = await asyncio.gather(*[self._get_job_status(job_id) for job_id in job_ids])
         except Exception as ex:  # noqa: B902
             result.error = str(ex)
         else:
@@ -73,30 +78,10 @@ class Queue:
 
         return result
 
-    async def get_job_by_id(self, job_id: str, redis: Optional[ArqRedis] = None) -> JobInfo:
-        if redis is None:
-            async with get_redis(self.redis_settings) as redis:
-                return await self._get_job_by_id(job_id, redis)
-        return await self._get_job_by_id(job_id, redis)
-
-    async def abort_job(self, job_id: str) -> Optional[bool]:
-        # None here means we are not sure if the job was aborted or not
-        async with get_redis(self.redis_settings) as redis:
-            arq_job = ArqJob(
-                job_id=job_id,
-                redis=redis,
-                _queue_name=self.name,
-                _deserializer=settings.ARQ_DESERIALIZER_BY_QUEUE.get(self.name),
-            )
-            with suppress(asyncio.TimeoutError):
-                return await arq_job.abort(timeout=settings.ARQ_JOB_ABORT_TIMEOUT)
-
-        return None
-
-    async def _get_job_by_id(self, job_id: str, redis: ArqRedis) -> JobInfo:
+    async def get_job_by_id(self, job_id: str) -> JobInfo:
         arq_job = ArqJob(
             job_id=job_id,
-            redis=redis,
+            redis=self._redis,
             _queue_name=self.name,
             _deserializer=settings.ARQ_DESERIALIZER_BY_QUEUE.get(self.name),
         )
@@ -123,18 +108,31 @@ class Queue:
 
         return job_info
 
-    async def _get_job_status(self, job_id: str, redis: ArqRedis) -> JobStatus:
+    async def abort_job(self, job_id: str) -> Optional[bool]:
+        # None here means we are not sure if the job was aborted or not
         arq_job = ArqJob(
             job_id=job_id,
-            redis=redis,
+            redis=self._redis,
+            _queue_name=self.name,
+            _deserializer=settings.ARQ_DESERIALIZER_BY_QUEUE.get(self.name),
+        )
+        with suppress(asyncio.TimeoutError):
+            return await arq_job.abort(timeout=settings.ARQ_JOB_ABORT_TIMEOUT)
+
+        return None
+
+    async def _get_job_status(self, job_id: str) -> JobStatus:
+        arq_job = ArqJob(
+            job_id=job_id,
+            redis=self._redis,
             _queue_name=self.name,
             _deserializer=settings.ARQ_DESERIALIZER_BY_QUEUE.get(self.name),
         )
         return await arq_job.status()
 
-    async def _get_job_ids(self, redis: ArqRedis) -> Set[str]:
-        raw_job_ids = set(await redis.zrangebyscore(self.name, '-inf', 'inf'))
-        result_keys = await redis.keys(f'{result_key_prefix}*')
+    async def _get_job_ids(self) -> Set[str]:
+        raw_job_ids = set(await self._redis.zrangebyscore(self.name, '-inf', 'inf'))
+        result_keys = await self._redis.keys(f'{result_key_prefix}*')
         raw_job_ids |= {key[len(result_key_prefix):] for key in result_keys}
 
         return {job_id.decode('utf-8') if isinstance(job_id, bytes) else job_id for job_id in raw_job_ids}
