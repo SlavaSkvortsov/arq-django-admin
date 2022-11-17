@@ -36,7 +36,10 @@ class QueueListView(ListView):
 
     @classmethod
     async def _gather_queues(cls) -> List[QueueStats]:
-        return list(await asyncio.gather(*[cls._get_queue_stats(name) for name in ARQ_QUEUES.keys()]))
+        result = []  # pragma: no cover
+        for name in ARQ_QUEUES.keys():  # pragma: no cover
+            result.append(await cls._get_queue_stats(name))
+        return result
 
 
 @method_decorator(staff_member_required, name='dispatch')
