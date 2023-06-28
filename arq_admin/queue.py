@@ -1,4 +1,5 @@
 import asyncio
+from collections import defaultdict
 from contextlib import suppress
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
@@ -13,6 +14,10 @@ from arq_admin import settings
 from arq_admin.job import JobInfo
 
 ARQ_PREFIX = 'arq:'
+PREFIX_PRIORITY = defaultdict(
+    lambda: -1,
+    {prefix: i for i, prefix in enumerate(['job', 'in-progress', 'result'])},
+)
 
 
 @dataclass
@@ -157,8 +162,8 @@ class Queue:
         job_ids_to_scores = {key[0].decode('utf-8'): key[1] for key in job_ids_with_scores}
         job_ids_to_prefixes = dict(sorted(
             job_ids_with_prefixes,
-            # make sure that more specific indices go after generic *job* prefix
-            key=lambda job_id_with_prefix: -1 if job_id_with_prefix[-1] == 'job' else 1,
+            # make sure that more specific indices go after less specific ones
+            key=lambda job_id_with_prefix: PREFIX_PRIORITY[job_id_with_prefix[-1]],
         ))
 
         self._cached_job_id_to_status_map = {
