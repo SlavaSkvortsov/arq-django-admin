@@ -58,6 +58,8 @@ class Queue:
 
         if status:
             job_ids = {job_id for (job_id, job_status) in job_id_to_status_map.items() if job_status == status}
+        else:
+            job_ids = set(job_id_to_status_map.keys())
 
         jobs: List[JobInfo] = await asyncio.gather(*[self.get_job_by_id(job_id) for job_id in job_ids])
 
