@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import pytest_asyncio
+from arq import ArqRedis
 from arq.constants import default_queue_name
 from arq.jobs import DeserializationError, Job, JobStatus
 from django.conf import settings
@@ -49,7 +50,23 @@ async def test_stats(queue: Queue) -> None:
 
 
 @pytest.mark.asyncio()
-@patch.object(Queue, '_get_job_ids')
+@pytest.mark.usefixtures('all_jobs')
+async def test_stats_with_running_job_wo_zscore(redis: ArqRedis, queue: Queue) -> None:
+    await redis.zrem(queue.name, 'running_task')
+
+    assert await queue.get_stats() == QueueStats(
+        name=default_queue_name,
+        host=settings.REDIS_SETTINGS.host,
+        port=settings.REDIS_SETTINGS.port,
+        database=settings.REDIS_SETTINGS.database,
+        queued_jobs=1,
+        running_jobs=0,
+        deferred_jobs=1,
+    )
+
+
+@pytest.mark.asyncio()
+@patch.object(Queue, '_get_job_id_to_status_map')
 async def test_stats_with_error(mocked_get_job_ids: AsyncMock, queue: Queue) -> None:
     error_text = 'test error'
     mocked_get_job_ids.side_effect = Exception(error_text)
