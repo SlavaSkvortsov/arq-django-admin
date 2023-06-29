@@ -149,7 +149,7 @@ class Queue:
             return self._cached_job_id_to_status_map
 
         async with self._redis.pipeline(transaction=True) as pipe:
-            await pipe.keys(f'{ARQ_PREFIX}*')
+            await pipe.keys(f'{ARQ_PREFIX}*:*')
             await pipe.zrange(self.name, withscores=True, start=0, end=-1)
             all_arq_keys, job_ids_with_scores = await pipe.execute()
 
@@ -176,7 +176,7 @@ class Queue:
     def _get_job_status_from_raw_data(self, prefix: str, zscore: Optional[int]) -> JobStatus:  # noqa: CFQ004
         if prefix == 'result':
             return JobStatus.complete
-        if prefix == 'in-progress':
+        if prefix == 'in-progress' and zscore:
             return JobStatus.in_progress
         if zscore:
             return JobStatus.deferred if zscore > timestamp_ms() else JobStatus.queued
