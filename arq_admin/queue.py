@@ -1,5 +1,4 @@
 import asyncio
-from collections import defaultdict
 from contextlib import suppress
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
@@ -14,10 +13,7 @@ from arq_admin import settings
 from arq_admin.job import JobInfo
 
 ARQ_PREFIX = 'arq:'
-PREFIX_PRIORITY = defaultdict(
-    lambda: -1,
-    {prefix: i for i, prefix in enumerate(['job', 'in-progress', 'result'])},
-)
+PREFIX_PRIORITY = {prefix: i for i, prefix in enumerate(['job', 'in-progress', 'result'])}
 
 
 @dataclass
@@ -78,12 +74,16 @@ class Queue:
             database=self.redis_settings.database,
         )
 
-        job_id_to_status_map = await self._get_job_id_to_status_map()
-        statuses = job_id_to_status_map.values()
+        try:
+            job_id_to_status_map = await self._get_job_id_to_status_map()
+        except Exception as ex:  # noqa: B902
+            result.error = str(ex)
+        else:
+            statuses = job_id_to_status_map.values()
 
-        result.queued_jobs = len([status for status in statuses if status == JobStatus.queued])
-        result.running_jobs = len([status for status in statuses if status == JobStatus.in_progress])
-        result.deferred_jobs = len([status for status in statuses if status == JobStatus.deferred])
+            result.queued_jobs = len([status for status in statuses if status == JobStatus.queued])
+            result.running_jobs = len([status for status in statuses if status == JobStatus.in_progress])
+            result.deferred_jobs = len([status for status in statuses if status == JobStatus.deferred])
 
         return result
 
@@ -161,7 +161,8 @@ class Queue:
 
         job_ids_to_scores = {key[0].decode('utf-8'): key[1] for key in job_ids_with_scores}
         job_ids_to_prefixes = dict(sorted(
-            job_ids_with_prefixes,
+            # not only ensure that we don't get key error but also filter out stuff that's not a client job
+            ([job_id, prefix] for job_id, prefix in job_ids_with_prefixes if prefix in PREFIX_PRIORITY),
             # make sure that more specific indices go after less specific ones
             key=lambda job_id_with_prefix: PREFIX_PRIORITY[job_id_with_prefix[-1]],
         ))
@@ -180,5 +181,4 @@ class Queue:
             return JobStatus.in_progress
         if zscore:
             return JobStatus.deferred if zscore > timestamp_ms() else JobStatus.queued
-        else:
-            return JobStatus.not_found
+        return JobStatus.not_found
