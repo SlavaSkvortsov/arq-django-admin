@@ -155,10 +155,11 @@ class Queue:
             await pipe.zrange(self.name, withscores=True, start=0, end=-1)
             all_arq_keys, job_ids_with_scores = await pipe.execute()
 
+        regex_matches_from_arq_keys = (ARQ_KEY_REGEX.match(key.decode('utf-8')) for key in all_arq_keys)
         # iter over dicts with job ids and their keys' prefixes
         # can't create mapping from ids to prefixes right away here
         # because we can have multiple keys with different prefixes for one job and need to use the more specific one
-        job_ids_with_prefixes = (ARQ_KEY_REGEX.match(key.decode('utf-8')).groupdict() for key in all_arq_keys)
+        job_ids_with_prefixes = (match.groupdict() for match in regex_matches_from_arq_keys if match is not None)
 
         job_ids_to_scores = {key[0].decode('utf-8'): key[1] for key in job_ids_with_scores}
         job_ids_to_prefixes = dict(sorted(

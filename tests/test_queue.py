@@ -68,7 +68,7 @@ async def test_stats_with_running_job_wo_zscore(redis: ArqRedis, queue: Queue) -
 @pytest.mark.asyncio()
 @pytest.mark.usefixtures('all_jobs')
 async def test_stats_job_with_colon_in_the_name(redis: ArqRedis, queue: Queue) -> None:
-    job = await redis.enqueue_job('new_task', _job_id='queued:task')
+    await redis.enqueue_job('new_task', _job_id='queued:task')
 
     assert await queue.get_stats() == QueueStats(
         name=default_queue_name,
