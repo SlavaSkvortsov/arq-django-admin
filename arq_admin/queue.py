@@ -1,4 +1,5 @@
 import asyncio
+import re
 from contextlib import suppress
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
@@ -13,6 +14,7 @@ from arq_admin import settings
 from arq_admin.job import JobInfo
 
 ARQ_PREFIX = 'arq:'
+ARQ_KEY_REGEX = re.compile(r'arq\:(?P<prefix>.+?)\:(?P<job_id>.+)')
 PREFIX_PRIORITY = {prefix: i for i, prefix in enumerate(['job', 'in-progress', 'result'])}
 
 
@@ -153,16 +155,15 @@ class Queue:
             await pipe.zrange(self.name, withscores=True, start=0, end=-1)
             all_arq_keys, job_ids_with_scores = await pipe.execute()
 
-        # iter over lists of type [job_id, prefix];
-        # can't use dict here because we can have multiple keys for one job and need to use the more specific one
-        job_ids_with_prefixes = (
-            key.decode('utf-8')[len(ARQ_PREFIX):].split(':')[::-1] for key in all_arq_keys
-        )
+        # iter over dicts with job ids and their keys' prefixes
+        # can't create mapping from ids to prefixes right away here
+        # because we can have multiple keys with different prefixes for one job and need to use the more specific one
+        job_ids_with_prefixes = (ARQ_KEY_REGEX.match(key.decode('utf-8')).groupdict() for key in all_arq_keys)
 
         job_ids_to_scores = {key[0].decode('utf-8'): key[1] for key in job_ids_with_scores}
         job_ids_to_prefixes = dict(sorted(
             # not only ensure that we don't get key error but also filter out stuff that's not a client job
-            ([job_id, prefix] for job_id, prefix in job_ids_with_prefixes if prefix in PREFIX_PRIORITY),
+            ([key['job_id'], key['prefix']] for key in job_ids_with_prefixes if key['prefix'] in PREFIX_PRIORITY),
             # make sure that more specific indices go after less specific ones
             key=lambda job_id_with_prefix: PREFIX_PRIORITY[job_id_with_prefix[-1]],
         ))
