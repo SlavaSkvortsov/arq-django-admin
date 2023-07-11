@@ -66,6 +66,22 @@ async def test_stats_with_running_job_wo_zscore(redis: ArqRedis, queue: Queue) -
 
 
 @pytest.mark.asyncio()
+@pytest.mark.usefixtures('all_jobs')
+async def test_stats_job_with_colon_in_the_name(redis: ArqRedis, queue: Queue) -> None:
+    await redis.enqueue_job('new_task', _job_id='queued:task')
+
+    assert await queue.get_stats() == QueueStats(
+        name=default_queue_name,
+        host=settings.REDIS_SETTINGS.host,
+        port=settings.REDIS_SETTINGS.port,
+        database=settings.REDIS_SETTINGS.database,
+        queued_jobs=2,
+        running_jobs=1,
+        deferred_jobs=1,
+    )
+
+
+@pytest.mark.asyncio()
 @patch.object(Queue, '_get_job_id_to_status_map')
 async def test_stats_with_error(mocked_get_job_ids: AsyncMock, queue: Queue) -> None:
     error_text = 'test error'
