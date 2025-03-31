@@ -1,12 +1,13 @@
 import asyncio
-from typing import AsyncGenerator
+from dataclasses import dataclass
+from typing import AsyncGenerator, Optional
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import pytest_asyncio
 from arq import ArqRedis
 from arq.constants import default_queue_name
-from arq.jobs import DeserializationError, Job, JobStatus
+from arq.jobs import DeserializationError, Job, JobStatus, JobDef
 from django.conf import settings
 
 from arq_admin.queue import Queue, QueueStats
@@ -98,6 +99,22 @@ async def test_stats_with_error(mocked_get_job_ids: AsyncMock, queue: Queue) -> 
 @pytest.mark.asyncio()
 @patch.object(Job, 'info')
 async def test_deserialize_error(mocked_job_info: MagicMock, jobs_creator: JobsCreator, queue: Queue) -> None:
+    job = await jobs_creator.create_queued()
+    mocked_job_info.side_effect = DeserializationError()
+    job_info = await queue.get_job_by_id(job.job_id)
+    assert job_info.function == "Unknown, can't deserialize"
+
+
+@dataclass
+class NewArqJobDef(JobDef):
+    job_id: Optional[str]
+
+
+@pytest.mark.asyncio()
+@patch('arq_admin.queue.JobDef', NewArqJobDef)
+@patch('arq_admin.queue.ARQ_VERSION_TUPLE', (0, 26, 0))
+@patch.object(Job, 'info')
+async def test_deserialize_error_in_arq_26(mocked_job_info: MagicMock, jobs_creator: JobsCreator, queue: Queue) -> None:
     job = await jobs_creator.create_queued()
     mocked_job_info.side_effect = DeserializationError()
     job_info = await queue.get_job_by_id(job.job_id)
