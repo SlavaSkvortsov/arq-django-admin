@@ -11,6 +11,7 @@ from arq.utils import timestamp_ms
 from django.utils import timezone
 
 from arq_admin import settings
+from arq_admin.compat import ARQ_VERSION_TUPLE
 from arq_admin.job import JobInfo
 
 ARQ_PREFIX = 'arq:'
@@ -106,14 +107,19 @@ class Queue:
                 unknown_function_msg = "Unknown, can't deserialize"
 
         if not base_info:
-            base_info = JobDef(
-                function=unknown_function_msg,
-                args=(),
-                kwargs={},
-                job_try=-1,
-                enqueue_time=timezone.now().replace(year=2077),
-                score=420,
-            )
+            parameters = {
+                'function': unknown_function_msg,
+                'args': (),
+                'kwargs': {},
+                'job_try': -1,
+                'enqueue_time': timezone.now().replace(year=2077),
+                'score': 420,
+            }
+            if ARQ_VERSION_TUPLE < (0, 26, 0):
+                base_info = JobDef(**parameters)
+            else:
+                parameters['job_id'] = job_id
+                base_info = JobDef(**parameters)
 
         job_info = JobInfo.from_base(base_info, job_id)
         job_info.status = await self._get_job_status(job_id)
