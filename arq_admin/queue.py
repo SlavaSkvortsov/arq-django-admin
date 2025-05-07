@@ -196,4 +196,4 @@ class Queue:
             return JobStatus.in_progress
         if zscore:
             return JobStatus.deferred if zscore > timestamp_ms() else JobStatus.queued
-        return JobStatus.not_found
+        return JobStatus.not_found  # pragma: nocover
