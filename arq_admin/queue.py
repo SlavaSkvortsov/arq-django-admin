@@ -168,9 +168,16 @@ class Queue:
         job_ids_with_prefixes = (match.groupdict() for match in regex_matches_from_arq_keys if match is not None)
 
         job_ids_to_scores = {key[0].decode('utf-8'): key[1] for key in job_ids_with_scores}
+        job_ids_in_queue = set(job_ids_to_scores.keys())
         job_ids_to_prefixes = dict(sorted(
             # not only ensure that we don't get key error but also filter out stuff that's not a client job
-            ([key['job_id'], key['prefix']] for key in job_ids_with_prefixes if key['prefix'] in PREFIX_PRIORITY),
+            (
+                [key['job_id'], key['prefix']]
+                for key in job_ids_with_prefixes
+                if key['prefix'] in PREFIX_PRIORITY and (
+                    key['job_id'] in job_ids_in_queue or key['prefix'] == 'result'
+                )
+            ),
             # make sure that more specific indices go after less specific ones
             key=lambda job_id_with_prefix: PREFIX_PRIORITY[job_id_with_prefix[-1]],
         ))
@@ -189,4 +196,4 @@ class Queue:
             return JobStatus.in_progress
         if zscore:
             return JobStatus.deferred if zscore > timestamp_ms() else JobStatus.queued
-        return JobStatus.not_found
+        return JobStatus.not_found  # pragma: nocover

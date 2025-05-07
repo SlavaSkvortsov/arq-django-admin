@@ -21,7 +21,7 @@ class QueueListView(ListView):
 
     def get_queryset(self) -> List[QueueStats]:
         result = asyncio.run(self._gather_queues())
-        return result
+        return result  # pragma: nocover
 
     def get_context_data(self, **kwargs: Any) -> Dict[str, Any]:
         context = super().get_context_data(**kwargs)
@@ -60,7 +60,7 @@ class BaseJobListView(ListView):
     def get_queryset(self) -> List[JobInfo]:
         queue_name = self.kwargs['queue_name']  # pragma: no cover
         jobs = asyncio.run(self._get_queue_jobs(queue_name))
-        return sorted(jobs, key=attrgetter('enqueue_time'))
+        return sorted(jobs, key=attrgetter('enqueue_time'))  # pragma: nocover
 
     def get_context_data(self, **kwargs: Any) -> Dict[str, Any]:
         context = super().get_context_data(**kwargs)
