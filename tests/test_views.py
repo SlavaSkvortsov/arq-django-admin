@@ -135,7 +135,7 @@ async def test_post_job_abort_view(
     default_queue_name: RedisSettings(host='localhost', port=6379, database=1),
     'arq:queue2': RedisSettings(host='localhost', port=6379, database=1),
 })
-async def test_two_queues_detail_views(async_client: AsyncClient):
+async def test_two_queues_detail_views(async_client: AsyncClient) -> None:
     second_queue_name = 'arq:queue2'
     # Patch arq_admin.settings.ARQ_QUEUES to match the overridden settings
     import arq_admin.settings as arq_admin_settings
